@@ -7,6 +7,8 @@ package frc.robot;
 import com.revrobotics.CANSparkMax;
 import com.revrobotics.CANSparkMaxLowLevel.MotorType;
 
+import com.ctre.phoenixpro.hardware.TalonFX;
+
 import edu.wpi.first.cameraserver.CameraServer;
 import edu.wpi.first.math.controller.SimpleMotorFeedforward;
 
@@ -56,6 +58,7 @@ public class Robot extends TimedRobot {
 
   private final DifferentialDrive m_drive = new DifferentialDrive(m_leftmotors, m_rightmotors);
 
+  private final TalonFX m_liftarm_motor = new TalonFX(10);
 
   private final ADXRS450_Gyro m_gyro = new ADXRS450_Gyro(SPI.Port.kOnboardCS0);
 
@@ -210,11 +213,17 @@ public class Robot extends TimedRobot {
 
 
 
-    //Tube Lifting
+    //Shifting
     if (joyR.getTriggerPressed()) {
       shiftinator.toggle();
     }
 
+    //Arm Lifting!!
+    if (joyXbox.getBButton()){
+      m_liftarm_motor.set(joyXbox.getLeftY());
+    } else {
+      m_liftarm_motor.set(0);
+    }
     
   }
 
