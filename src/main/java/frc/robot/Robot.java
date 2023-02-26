@@ -47,7 +47,9 @@ public class Robot extends TimedRobot {
   private final SendableChooser<Autos> autoChooser = new SendableChooser<>();
   private Autos m_autoSelected;
 
-  private final TalonFX m_liftarm_motor = new TalonFX(10);
+  private final WPI_TalonFX m_liftarm_motor = new WPI_TalonFX(10);
+
+
 
   private final MotorController m_rightmotors = 
   new MotorControllerGroup(
@@ -79,6 +81,9 @@ public class Robot extends TimedRobot {
   private boolean getArmZeroSwitchHit() {
     return !armZeroSwitch.get();
   }
+  private float getArmAngle() {
+    return m_liftarm_motor.getSelectedSensorPosition() * Constants.Arm.ENCODER_COUNTS_TO_ARM_DEGS;
+  }
 
   private double autoStartTime = 0;
 
@@ -93,7 +98,7 @@ public class Robot extends TimedRobot {
 
     m_leftmotors.setInverted(false); //Making sure they go the right way
     m_rightmotors.setInverted(true);
-    //m_gyro.calibrate();
+    m_gyro.calibrate();
 
     //Don't zero the arm here, we're not allowed to move on startup
 
@@ -159,6 +164,9 @@ public class Robot extends TimedRobot {
   double lastR = 0;
 
   boolean needToZeroArm = false;
+  boolean inManualArmMode = false;
+  double armTarget     = Constants.Arm.ANGLE_HOLD;
+  double prevArmTarget = Constants.Arm.ANGLE_HOLD;
 
   @Override
   public void teleopPeriodic() {
@@ -182,33 +190,69 @@ public class Robot extends TimedRobot {
     SmartDashboard.putNumber("Right Drive Voltage",r);
 
 
-    //double turningValue = m_gyro.getAngle();
-    //SmartDashboard.putNumber("Gyro", turningValue);
+    double tilt = m_gyro.getAngle();
+    SmartDashboard.putNumber("Gyro", tilt);
 
     //Solonoids
     shiftinator.set(joyR.getTrigger());
-    grabinator.set(joyOperator.getRawButton(Constants.Controllers.kGamepadButtonLT));
+    if (joyOperator.getRawButton(LogitechF130Controller.kButtonX)) grabinator.set(true);
+    if (joyOperator.getRawButton(LogitechF130Controller.kButtonY)) grabinator.set(false);
 
 
     //Arm Lifting!!
 
+    if (needToZeroArm) {
+      //Arm Zeroing Ritual: Move backwards until we hit the limit switch, then stop and zero the encoder.
       if (getArmZeroSwitchHit()) {
-        m_liftarm_motor.setSelectedSensorPosition(0);
-        m_liftarm_motor.set(TalonFXControlMode.PercentOutput, 0);
+        m_liftarm_motor.setSelectedSensorPosition(0); 
+        m_liftarm_motor.set(0);
+        
         needToZeroArm = false;
       } else {
-        m_liftarm_motor.set(TalonFXControlMode.Current, Constants.Arm.ZEROING_VOLTAGE);
+        m_liftarm_motor.setVoltage(Constants.Arm.ZEROING_VOLTAGE);
+      }
+    } else {
+
+      //Once arm is zeroed, do things
+
+      //Arm control works like this:
+      //DPAD-UP will set the target level for the arm to be the HI position
+      //DPAD-Right or DPAD Left will set the target position of the arm to the MID position
+      //DPAD-Down will set the target pos to the HOLD position.
+
+      //This is fine, but what if you want to manually adjust the position of the arm?
+      //While holding the Left Bumper, The Left Stick (Up-And-Down) lets you send the arm up and down.
+      //When you release the Left Bumper it will return to the last set target position.
+
+      //Finally, X will cause the robot to try to GRAB a cube or cone, and
+      // Y will try to DROP a cube or cone. Keep in mind the Pnumatics are not super fast!
+
+      double dpadAngle = joyOperator.getPOV(0);
+      switch (dpadAngle) {
+        case 0:   armTarget = Constants.Arm.ANGLE_HI;   break;
+        case 90:  armTarget = Constants.Arm.ANGLE_MID;  break;
+        case 270: armTarget = Constants.Arm.ANGLE_MID;  break;
+        case 180: armTarget = Constants.Arm.ANGLE_HOLD; break;
       }
 
-      double armV = joyOperator.getRawAxis(Constants.Controllers.kGamepadAxisLeftStickX);//calcArmPID(m_liftarm_motor.getSelectedSensorPosition() / 2048 / 400, joyOperator.getRawAxis(Constants.Controllers.kGamepadAxisLeftStickX));
-      //if (joyOperator.getRawButton(Constants.Controllers.kGamepadButtonX)){
-        SmartDashboard.putNumber("Arm Power", armV);
-        m_liftarm_motor.set(TalonFXControlMode.PercentOutput, armV);
-      //} else {
-      //  m_liftarm_motor.set(TalonFXControlMode.PercentOutput,0);
-     // }
+      if (joyOperator.getRawButton(LogitechF130Controller.kButtonLB)) {
+        if (!inManualArmMode) {
+          inManualArmMode = true;
+          prevArmTarget = armTarget;
+        }
+        armTarget += joyOperator.getRawAxis(LogitechF130Controller.kLeftStickY);
+      } else if (inManualArmMode) {
+        armTarget = prevArmTarget;
+        inManualArmMode = false;
+      }
 
-    //}
+      
+      //Automatic control
+      double armV = calcArmPID(armTarget, getArmAngle());
+      SmartDashboard.putNumber("Arm Voltage", armV);
+      m_liftarm_motor.setVoltage(armV);
+
+    }
     
   }
   /** This function is called once when the robot is disabled. */

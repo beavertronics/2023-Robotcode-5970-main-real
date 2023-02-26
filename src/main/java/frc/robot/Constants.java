@@ -21,10 +21,26 @@ public final class Constants {
     }
 
     public final class Arm {
+
+        public static final float ENCODER_COUNTS_PER_REV = 4096; //
+        public static final float RATIO = 400 / 1 ;//Gear ratio from falcon to arm; how many falcon rotations per arm rotation
+
+        public static final float ENCODER_COUNTS_PER_ARM_REV = ENCODER_COUNTS_PER_REV * RATIO;
+        public static final float ENCODER_COUNTS_TO_ARM_DEGS = 360/ENCODER_COUNTS_PER_ARM_REV;
+
+
         public static final float P = 1;
         public static final float I = 0;
         public static final float D = 0;
         public static final float ZEROING_VOLTAGE = 12/2; //Voltage for sending arm to start
+
+        //Reasonable estimates from CAD
+        //Need to be tuned
+        //Note: Relative to limit switch hit position!
+        public static final float ANGLE_HI   = 100; //Angle required to reach highest row on a Grid
+        public static final float ANGLE_MID  = 85;  //Angle required to reach middle row on a Grid
+        public static final float ANGLE_LO   = 30;  //Angle that gets us the closest to the ground (May go unused)
+        public static final float ANGLE_HOLD = 0;   //Angle that gets the arm all the way inside the frame perimeter
 
     }
 
