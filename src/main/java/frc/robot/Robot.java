@@ -4,15 +4,19 @@
 
 package frc.robot;
 
+import frc.robot.Constants;
+
 import com.revrobotics.CANSparkMax;
 import com.revrobotics.CANSparkMaxLowLevel.MotorType;
-
-import com.ctre.phoenixpro.hardware.TalonFX;
+import com.ctre.phoenix.motorcontrol.TalonFXControlMode;
+import com.ctre.phoenix.motorcontrol.can.TalonFX;
 
 import edu.wpi.first.cameraserver.CameraServer;
+import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.math.controller.SimpleMotorFeedforward;
 
 import edu.wpi.first.wpilibj.ADXRS450_Gyro;
+import edu.wpi.first.wpilibj.DigitalInput;
 import edu.wpi.first.wpilibj.Joystick;
 import edu.wpi.first.wpilibj.SPI;
 import edu.wpi.first.wpilibj.TimedRobot;
@@ -20,6 +24,7 @@ import edu.wpi.first.wpilibj.XboxController;
 import edu.wpi.first.wpilibj.drive.DifferentialDrive;
 import edu.wpi.first.wpilibj.motorcontrol.MotorController;
 import edu.wpi.first.wpilibj.motorcontrol.MotorControllerGroup;
+import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj.Solenoid;
 import edu.wpi.first.wpilibj.PneumaticsModuleType;
@@ -31,18 +36,24 @@ import edu.wpi.first.wpilibj.PneumaticsModuleType;
  * project.
  */
 public class Robot extends TimedRobot {
+
+
+	//Clickysticks are next!
+
   /*Auto Switching setup */
-  private static final String kDefaultAuto = "Just move forwards and shoot and pray";
-  //private static final String kCustomAuto = "My Auto";
-  private String m_autoSelected;
-  //private final SendableChooser<String> m_chooser = new SendableChooser<>();
+  enum Autos {
+    MSP ("Just move forwards and shoot and pray"),
+    Nothing ("Just sit there");
 
-  /*
-  Motor Drivers: 
-  
+    public String desc;
+    private Autos(String desc) {
+      this.desc= desc;
+    }
+  }
+  private final SendableChooser<Autos> autoChooser = new SendableChooser<>();
+  private Autos m_autoSelected;
 
-  */
-
+  private final TalonFX m_liftarm_motor = new TalonFX(10);
 
   private final MotorController m_rightmotors = 
   new MotorControllerGroup(
@@ -58,87 +69,52 @@ public class Robot extends TimedRobot {
 
   private final DifferentialDrive m_drive = new DifferentialDrive(m_leftmotors, m_rightmotors);
 
-  private final TalonFX m_liftarm_motor = new TalonFX(10);
-
-  private final ADXRS450_Gyro m_gyro = new ADXRS450_Gyro(SPI.Port.kOnboardCS0);
-
-
-  private SimpleMotorFeedforward ffR;
-  private SimpleMotorFeedforward ffL;
+  //private final ADXRS450_Gyro m_gyro = new ADXRS450_Gyro(SPI.Port.kOnboardCS0);
 
 
   private final Solenoid shiftinator = new Solenoid(PneumaticsModuleType.CTREPCM, 1);
+  private final Solenoid grabinator  = new Solenoid(PneumaticsModuleType.CTREPCM, 0);
 
-  private final Joystick joyL = new Joystick(0);
-  private final Joystick joyR = new Joystick(1);
+  private final Joystick joyOperator= new Joystick(0);
+  private final Joystick joyL = new Joystick(1);
+  private final Joystick joyR = new Joystick(2);
 
-  private final XboxController joyXbox = new XboxController(3);
+  private final DigitalInput armZeroSwitch = new DigitalInput(0);//THIS IS INVERTED- Is false when pressed
+
+  private boolean getArmZeroSwitchHit() {
+    return !armZeroSwitch.get();
+  }
+
   private double autoStartTime = 0;
 
-  private double kS, kV, kA, kMaxVel, kMaxAcc;
-
-  private final String[] things = {kDefaultAuto};
-
-
-  public void getParamsFromSmartDashboard() {
-    boolean changed = false;
-    if (SmartDashboard.getNumber("kS", 0) != kS) {changed = true; kS = SmartDashboard.getNumber("kS", 0);};
-    if (SmartDashboard.getNumber("kV", 0) != kV) {changed = true; kV = SmartDashboard.getNumber("kV", 0);};
-    if (SmartDashboard.getNumber("kA", 0) != kA) {changed = true; kA = SmartDashboard.getNumber("kA", 0);};
-    if (changed) {
-      ffL = new SimpleMotorFeedforward(kS, kV, kA);
-      ffR = new SimpleMotorFeedforward(kS, kV, kA);
-    }
-
-  }
+  //private PIDController armPidController = new PIDController(1,0 ,0);
 
   @Override
   public void robotInit() {
-    //m_chooser.setDefaultOption(kDefaultAuto + " (Default Auto)", kDefaultAuto);
-    //m_chooser.addOption("Do Nothing???", "");
-    SmartDashboard.putStringArray("Auto List", things);
 
-    kS = 0;
-    kV = 0;
-    kA = 0;
+    autoChooser.setDefaultOption(Autos.Nothing.desc, Autos.Nothing);
+    for (Autos auto : Autos.values()) {
+      autoChooser.addOption(auto.desc, auto);
+    }
+    SmartDashboard.putData("Auto Choices:", autoChooser);
 
-    ffL = new SimpleMotorFeedforward(kS, kV, kA);
-    ffR = new SimpleMotorFeedforward(kS, kV, kA);
+    m_leftmotors.setInverted(false); //Making sure they go the right way
+    m_rightmotors.setInverted(true);
+    //m_gyro.calibrate();
 
-
-
-    m_leftmotors.setInverted(true); //Making sure they go the right way
-    m_rightmotors.setInverted(false);
-    m_gyro.calibrate();
-
-    CameraServer.startAutomaticCapture();
+    //CameraServer.startAutomaticCapture();
   }
 
-  /**
-   * This function is called every 20 ms, no matter the mode. Use this for items like diagnostics
-   * that you want ran during disabled, autonomous, teleoperated and test.
-   *
-   * <p>This runs after the mode specific periodic functions, but before LiveWindow and
-   * SmartDashboard integrated updating.
-   */
+  /*Called every 20 ms, no matter the mode.*/
   @Override
   public void robotPeriodic() {}
 
-  /**
-   * This autonomous (along with the chooser code above) shows how to select between different
-   * autonomous modes using the dashboard. The sendable chooser code works with the Java
-   * SmartDashboard. If you prefer the LabVIEW Dashboard, remove all of the chooser code and
-   * uncomment the getString line to get the auto name from the text box below the Gyro
-   *
-   * <p>You can add additional auto modes by adding additional comparisons to the switch structure
-   * below with additional strings. If using the SendableChooser make sure to add them to the
-   * chooser code above as well.
-   */
+
   @Override
   public void autonomousInit() {
-    m_autoSelected = SmartDashboard.getString("Auto Selector", kDefaultAuto);
-    //m_autoSelected = SmartDashboard.getString("Auto Selector", kDefaultAuto);
-    System.out.println("Auto selected: " + m_autoSelected);
+    m_autoSelected = autoChooser.getSelected();
+ 
+    System.out.println("Auto selected: " + m_autoSelected.desc);
     autoStartTime = System.currentTimeMillis();
   }
 
@@ -146,13 +122,9 @@ public class Robot extends TimedRobot {
   @Override
   public void autonomousPeriodic() {
     switch (m_autoSelected) {
-      /*case kCustomAuto:
-        // Put custom auto code here
-        break;*/
-      case kDefaultAuto:
-      default:
-      System.out.println("This auto was removed");
-        break;
+      case Nothing: break;
+      case MSP: throw new Error("This opmode is unimplemented!");
+      default:   throw new Error("Invalid Opmode!");
     }
   }
 
@@ -160,94 +132,108 @@ public class Robot extends TimedRobot {
   @Override
   public void teleopInit() {
     System.out.println("Teleop Initialized!");
+    needToZeroArm = true;
   }
 
-  public double[] motorStats = {0,0,0,0}; 
-  public double kDt = 0.02;
 
+  private double calcDriveFF(double targetVel, double targetAcc) {
+    return Constants.Drive.KS * Math.signum(targetVel) + Constants.Drive.KV * targetVel + Constants.Drive.KA * targetAcc;
+  }
 
-  public double profiledTargetVelL = 0;
-  public double profiledTargetVelR = 0;
-  public double dt = 0.02;
+  private double lastArmErr = 0; //Last 
+  private double armI = 0; //Integral accumulator for arm PID
 
-  //public double profiledTargetAcc = 0;
-  //public double kJerk = 1;
+  private double calcArmPID(double setpoint, double pos) {
+    double err = setpoint - pos; //P
 
-  private double calcVelRamp(double targetVel, double smoothedVel) {
+    double errSlope = (err - lastArmErr) / Constants.DT; //D
 
-    double desiredAccel = (targetVel - smoothedVel)/dt;
-    if (Math.abs(desiredAccel) > kMaxAcc) {
-      desiredAccel = Math.copySign(kMaxAcc, desiredAccel);
-    }
-    smoothedVel += desiredAccel * dt; 
-    return smoothedVel;
+    armI += err * Constants.DT; //I
+
+    double voltage =  Constants.Arm.P * err +  Constants.Arm.I * armI + Constants.Arm.D * errSlope;
+    lastArmErr = err;
+    return voltage;
   }
 
   /** This function is called periodically during operator control. */
 
+  double lastL = 0; //Last position of left control
+  double lastR = 0;
+
+  boolean needToZeroArm = false;
+
   @Override
   public void teleopPeriodic() {
 
-    profiledTargetVelL = calcVelRamp(joyL.getY(), profiledTargetVelL);
-    profiledTargetVelR = calcVelRamp(joyR.getY(), profiledTargetVelR);
+    double joyl = joyL.getY();
+    double joyr = joyR.getY();
     
-    double l = joyL.getY();//ffL.calculate(profiledTargetVelL);
-    double r = joyR.getY();//ffR.calculate(profiledTargetVelR);
+    double l = calcDriveFF(joyl, Math.min(Math.abs(joyl-lastL), Constants.Drive.MAX_ACC) * Math.signum(joyl-lastL));
+    double r = calcDriveFF(joyr, Math.min(Math.abs(joyr-lastR), Constants.Drive.MAX_ACC) * Math.signum(joyr-lastR));
 
-    motorStats[0] = l;
-    motorStats[1] = r;
-    motorStats[2] = l;
-    motorStats[3] = r;
+    lastL = joyl;
+    lastR = joyr;
 
 
     //Tank Drive1-
-    m_drive.tankDrive(l, r);
-    SmartDashboard.putNumber("RobotDriveL",l);
-    SmartDashboard.putNumber("RobotDriveR",r);
+    m_rightmotors.setVoltage(Math.min(Math.abs(r), Constants.Drive.DRIVE_V_LIMIT) * Math.signum(r));
+    m_leftmotors.setVoltage(Math.min(Math.abs(l), Constants.Drive.DRIVE_V_LIMIT) * Math.signum(l));
+    m_drive.feed();
+    SmartDashboard.putNumber("Left Drive Voltage",l);
+    SmartDashboard.putNumber("Right Drive Voltage",r);
 
 
-    double turningValue = m_gyro.getAngle();
-    //System.out.println(turningValue);
+    //double turningValue = m_gyro.getAngle();
+    //SmartDashboard.putNumber("Gyro", turningValue);
 
-    SmartDashboard.putNumber("Gyro", turningValue);
-
-
-
-    //Shifting
-    if (joyR.getTriggerPressed()) {
-      shiftinator.toggle();
-    }
+    //Solonoids
+    shiftinator.set(joyR.getTrigger());
+    grabinator.set(joyOperator.getRawButton(Constants.Controllers.kGamepadButtonLT));
 
     //Arm Lifting!!
-    if (joyXbox.getBButton()){
-      m_liftarm_motor.set(joyXbox.getLeftY());
-    } else {
-      m_liftarm_motor.set(0);
-    }
+
+    //Arm Zeroing Ritual
+
+    /*if (needToZeroArm) {
+      if (getArmZeroSwitchHit()) {
+        m_liftarm_motor.setSelectedSensorPosition(0);
+        m_liftarm_motor.set(TalonFXControlMode.PercentOutput, 0);
+        needToZeroArm = false;
+      } else {
+        m_liftarm_motor.set(TalonFXControlMode.Current, Constants.Arm.ZEROING_VOLTAGE);
+      }
+    } else {*/
+
+      double armV = joyOperator.getRawAxis(Constants.Controllers.kGamepadAxisLeftStickX);//calcArmPID(m_liftarm_motor.getSelectedSensorPosition() / 2048 / 400, joyOperator.getRawAxis(Constants.Controllers.kGamepadAxisLeftStickX));
+      //if (joyOperator.getRawButton(Constants.Controllers.kGamepadButtonX)){
+        SmartDashboard.putNumber("Arm Power", armV);
+        m_liftarm_motor.set(TalonFXControlMode.PercentOutput, armV);
+      //} else {
+      //  m_liftarm_motor.set(TalonFXControlMode.PercentOutput,0);
+     // }
+
+    //}
     
   }
-
   /** This function is called once when the robot is disabled. */
   @Override
   public void disabledInit() {
-    //m_drive.stopMotor();
+    m_drive.stopMotor();
   }
 
   /** This function is called periodically when disabled. */
   @Override
   public void disabledPeriodic() {}
 
-  /** This function is called once when test mode is enabled. */
   @Override
   public void testInit() {
-    System.out.println("Test Mode Was Removed!");
+    System.out.println("Test mode Init!");
+    teleopInit();
   }
 
-  /** This function is called periodically during test mode. */
   @Override
   public void testPeriodic() {
-    
-    //disabled
+    teleopPeriodic();
   }
 
   /** This function is called once when the robot is first started up. */
