@@ -1,8 +1,13 @@
 package frc.robot;
 
 public final class Constants {
-    //ALL UNITS ARE BASED AROUND FEET!! 
-    // SO WE HAVE f, f/s, and f/s/s!!!!!
+    // UNITS           = Name (Abbr)
+    //-----------------|-------------
+    // LENGTH/DISTANCE = Feet (f)
+    // VELOCITY/SPEED  = Feet per Second (f/s)
+    // ACCELERATION    = Feet per Second per Second (f/s/s)
+    // ANGLE           = Degrees or Rotations- will be labeled
+    // ELECTRIC POWER  = Volts (v)
 
     public static final float DT = 1/50;
 
@@ -19,28 +24,35 @@ public final class Constants {
         public static final float P = 1;
         public static final float I = 0;
         public static final float D = 0;
-        public static final float ZEROING_VOLTAGE = 1; //Voltage for sending arm to start
+        public static final float ZEROING_VOLTAGE = 12/2; //Voltage for sending arm to start
 
     }
 
-    public final class Controllers {
-             // Gamepad axis
-            public static final int kGamepadAxisLeftStickX = 3;
-            public static final int kGamepadAxisLeftStickY = 4;
-            public static final int kGamepadAxisRightStickX = 1;
-            public static final int kGamepadAxisRightStickY = 2;
-             //Todo: D-Pad?
+    public final class LogitechF130Controller {
+        //Largely borrowed from http://controls.coderedrobotics.com/programminglessons/4.html
+        //Gamepad axes (All vary from -1 to 1)
+        public static final int kAxisLeftStickX = 0;
+        public static final int kAxisLeftStickY = 1;
+        public static final int kAxisLT = 2; //Triggers are analog (they are below bumper buttons)
+        public static final int kAxisRT = 3;
+        public static final int kAxisRightStickX = 4;
+        public static final int kAxisRightStickY = 5;
 
-            // Gamepad buttons
-            public static final int kGamepadButtonX = 1;
-            public static final int kGamepadButtonA = 2; 
-            public static final int kGamepadButtonB = 3; 
-            public static final int kGamepadButtonY = 4; 
-            public static final int kGamepadButtonLB = 5;
-            public static final int kGamepadButtonRB = 6;
-            public static final int kGamepadButtonLT = 7;
-            public static final int kGamepadButtonRT = 8;
-            public static final int kGamepadButtonBack = 9;
-            public static final int kGamepadButtonStart = 10;
+        //D-Pad works differently and we don't even really need it so I didn't include it
+
+        // Gamepad buttons (clickysticks included)
+        public static final int kButtonA = 1; 
+        public static final int kButtonB = 2; 
+        public static final int kButtonX = 3;
+        public static final int kButtonY = 4; 
+
+        public static final int kButtonLB = 5; //Bumpers are different from triggers and are not analog
+        public static final int kButtonRB = 6;
+
+        public static final int kButtonBack = 7;
+        public static final int kButtonStart = 8;
+
+        public static final int kButtonLClick = 9;
+        public static final int kButtonRClick = 10;
     }
 }

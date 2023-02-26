@@ -1,44 +1,38 @@
 // Copyright (c) FIRST and other WPILib contributors.
 // Open Source Software; you can modify and/or share it under the terms of
 // the WPILib BSD license file in the root directory of this project.
-
+// Authors: Will Kam
 package frc.robot;
 
 import frc.robot.Constants;
+import frc.robot.Constants.LogitechF130Controller;
 
 import com.revrobotics.CANSparkMax;
 import com.revrobotics.CANSparkMaxLowLevel.MotorType;
 import com.ctre.phoenix.motorcontrol.TalonFXControlMode;
-import com.ctre.phoenix.motorcontrol.can.TalonFX;
+import com.ctre.phoenix.motorcontrol.can.WPI_TalonFX;
 
+import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.cameraserver.CameraServer;
-import edu.wpi.first.math.controller.PIDController;
-import edu.wpi.first.math.controller.SimpleMotorFeedforward;
+//import edu.wpi.first.math.controller.PIDController; Just did it myself, they always overcomplicate things
+//import edu.wpi.first.math.controller.SimpleMotorFeedforward;
 
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
+import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
+
+import edu.wpi.first.wpilibj.Joystick;
+//import edu.wpi.first.wpilibj.XboxController; RIP Xbox controller
+import edu.wpi.first.wpilibj.SPI;
 import edu.wpi.first.wpilibj.ADXRS450_Gyro;
 import edu.wpi.first.wpilibj.DigitalInput;
-import edu.wpi.first.wpilibj.Joystick;
-import edu.wpi.first.wpilibj.SPI;
-import edu.wpi.first.wpilibj.TimedRobot;
-import edu.wpi.first.wpilibj.XboxController;
-import edu.wpi.first.wpilibj.drive.DifferentialDrive;
-import edu.wpi.first.wpilibj.motorcontrol.MotorController;
-import edu.wpi.first.wpilibj.motorcontrol.MotorControllerGroup;
-import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
-import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
+
 import edu.wpi.first.wpilibj.Solenoid;
 import edu.wpi.first.wpilibj.PneumaticsModuleType;
+import edu.wpi.first.wpilibj.motorcontrol.MotorController;
+import edu.wpi.first.wpilibj.motorcontrol.MotorControllerGroup;
+import edu.wpi.first.wpilibj.drive.DifferentialDrive;
 
-/**
- * The VM is configured to automatically run this class, and to call the functions corresponding to
- * each mode, as described in the TimedRobot documentation. If you change the name of this class or
- * the package after creating this project, you must also update the build.gradle file in the
- * project.
- */
 public class Robot extends TimedRobot {
-
-
-	//Clickysticks are next!
 
   /*Auto Switching setup */
   enum Autos {
@@ -81,13 +75,12 @@ public class Robot extends TimedRobot {
 
   private final DigitalInput armZeroSwitch = new DigitalInput(0);//THIS IS INVERTED- Is false when pressed
 
+  //Cornvinience Functions
   private boolean getArmZeroSwitchHit() {
     return !armZeroSwitch.get();
   }
 
   private double autoStartTime = 0;
-
-  //private PIDController armPidController = new PIDController(1,0 ,0);
 
   @Override
   public void robotInit() {
@@ -102,7 +95,9 @@ public class Robot extends TimedRobot {
     m_rightmotors.setInverted(true);
     //m_gyro.calibrate();
 
-    //CameraServer.startAutomaticCapture();
+    //Don't zero the arm here, we're not allowed to move on startup
+
+    //CameraServer.startAutomaticCapture(); jetson stuff replaces this
   }
 
   /*Called every 20 ms, no matter the mode.*/
@@ -137,13 +132,16 @@ public class Robot extends TimedRobot {
 
 
   private double calcDriveFF(double targetVel, double targetAcc) {
-    return Constants.Drive.KS * Math.signum(targetVel) + Constants.Drive.KV * targetVel + Constants.Drive.KA * targetAcc;
+    return Constants.Drive.KS * Math.signum(targetVel) 
+      + Constants.Drive.KV * targetVel 
+       + Constants.Drive.KA * targetAcc;
   }
 
   private double lastArmErr = 0; //Last 
   private double armI = 0; //Integral accumulator for arm PID
 
   private double calcArmPID(double setpoint, double pos) {
+
     double err = setpoint - pos; //P
 
     double errSlope = (err - lastArmErr) / Constants.DT; //D
@@ -175,6 +173,7 @@ public class Robot extends TimedRobot {
     lastR = joyr;
 
 
+
     //Tank Drive1-
     m_rightmotors.setVoltage(Math.min(Math.abs(r), Constants.Drive.DRIVE_V_LIMIT) * Math.signum(r));
     m_leftmotors.setVoltage(Math.min(Math.abs(l), Constants.Drive.DRIVE_V_LIMIT) * Math.signum(l));
@@ -190,11 +189,9 @@ public class Robot extends TimedRobot {
     shiftinator.set(joyR.getTrigger());
     grabinator.set(joyOperator.getRawButton(Constants.Controllers.kGamepadButtonLT));
 
+
     //Arm Lifting!!
 
-    //Arm Zeroing Ritual
-
-    /*if (needToZeroArm) {
       if (getArmZeroSwitchHit()) {
         m_liftarm_motor.setSelectedSensorPosition(0);
         m_liftarm_motor.set(TalonFXControlMode.PercentOutput, 0);
@@ -202,7 +199,6 @@ public class Robot extends TimedRobot {
       } else {
         m_liftarm_motor.set(TalonFXControlMode.Current, Constants.Arm.ZEROING_VOLTAGE);
       }
-    } else {*/
 
       double armV = joyOperator.getRawAxis(Constants.Controllers.kGamepadAxisLeftStickX);//calcArmPID(m_liftarm_motor.getSelectedSensorPosition() / 2048 / 400, joyOperator.getRawAxis(Constants.Controllers.kGamepadAxisLeftStickX));
       //if (joyOperator.getRawButton(Constants.Controllers.kGamepadButtonX)){
