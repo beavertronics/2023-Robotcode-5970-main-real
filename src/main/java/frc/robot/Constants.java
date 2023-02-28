@@ -9,30 +9,32 @@ public final class Constants {
     // ANGLE           = Degrees or Rotations- will be labeled
     // ELECTRIC POWER  = Volts (v)
 
-    public static final float DT = 1/50;
+    public static final double DT = 0.02;
 
     public final class Drive {
-        public static final float KS = 0; //Voltage required to overcome static friction
-        public static final float KV = 1; //Voltage required to stay moving at 1 f/s
-        public static final float KA = 1; //Voltage required to accelerate at 1 f/s/s
+        public static final double KS = 0.24571; //Voltage required to overcome static friction
+        public static final double KV = 1.8927; //Voltage required to stay moving at 1 f/s
+        public static final double KA = 0.80986; //Voltage required to accelerate at 1 f/s/s
 
         public static final float MAX_ACC = 99999; //Maximum acceleration
         public static final float DRIVE_V_LIMIT = 12; //Voltage limit
+
+        public static final double TELE_SPEED_MULT = 5; //Fast!
     }
 
     public final class Arm {
 
-        public static final float ENCODER_COUNTS_PER_REV = 4096; //
+        public static final float ENCODER_COUNTS_PER_REV = 2048; //
         public static final float RATIO = 400 / 1 ;//Gear ratio from falcon to arm; how many falcon rotations per arm rotation
 
-        public static final float ENCODER_COUNTS_PER_ARM_REV = ENCODER_COUNTS_PER_REV * RATIO;
-        public static final float ENCODER_COUNTS_TO_ARM_DEGS = 360/ENCODER_COUNTS_PER_ARM_REV;
+        public static final double ENCODER_COUNTS_PER_ARM_REV = ENCODER_COUNTS_PER_REV * RATIO;
+        public static final double ENCODER_COUNTS_TO_ARM_DEGS = 360/ENCODER_COUNTS_PER_ARM_REV;
 
 
-        public static final float P = 1;
+        public static final double P = 1.5;
         public static final float I = 0;
         public static final float D = 0;
-        public static final float ZEROING_VOLTAGE = 12/2; //Voltage for sending arm to start
+        public static final float ZEROING_VOLTAGE = -12/2; //Voltage for sending arm to start
 
         //Reasonable estimates from CAD
         //Need to be tuned
