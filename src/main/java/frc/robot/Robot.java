@@ -9,11 +9,11 @@ import frc.robot.Constants.LogitechF130Controller;
 
 import com.revrobotics.CANSparkMax;
 import com.revrobotics.CANSparkMaxLowLevel.MotorType;
-import com.ctre.phoenix.motorcontrol.TalonFXControlMode;
+// import com.ctre.phoenix.motorcontrol.TalonFXControlMode; Not needed because we're using the WPI_Lib version
 import com.ctre.phoenix.motorcontrol.can.WPI_TalonFX;
 
 import edu.wpi.first.wpilibj.TimedRobot;
-import edu.wpi.first.cameraserver.CameraServer;
+//import edu.wpi.first.cameraserver.CameraServer; Not needed because jetson stuff is fancy
 //import edu.wpi.first.math.controller.PIDController; Just did it myself, they always overcomplicate things
 //import edu.wpi.first.math.controller.SimpleMotorFeedforward;
 
@@ -65,7 +65,7 @@ public class Robot extends TimedRobot {
 
   private final DifferentialDrive m_drive = new DifferentialDrive(m_leftmotors, m_rightmotors);
 
-  //private final ADXRS450_Gyro m_gyro = new ADXRS450_Gyro(SPI.Port.kOnboardCS0);
+  private final ADXRS450_Gyro m_gyro = new ADXRS450_Gyro(SPI.Port.kOnboardCS0);
 
 
   private final Solenoid shiftinator = new Solenoid(PneumaticsModuleType.CTREPCM, 1);
@@ -81,7 +81,8 @@ public class Robot extends TimedRobot {
   private boolean getArmZeroSwitchHit() {
     return !armZeroSwitch.get();
   }
-  private float getArmAngle() {
+  private double getArmAngle() {
+    SmartDashboard.putNumber("Arm Angle",m_liftarm_motor.getSelectedSensorPosition() * Constants.Arm.ENCODER_COUNTS_TO_ARM_DEGS );
     return m_liftarm_motor.getSelectedSensorPosition() * Constants.Arm.ENCODER_COUNTS_TO_ARM_DEGS;
   }
 
@@ -109,6 +110,20 @@ public class Robot extends TimedRobot {
   @Override
   public void robotPeriodic() {}
 
+  private void driveAutomatic(double startPos, double dist, double targetSpeed) {
+
+  }
+
+  private void weNeedToZero() {
+    needToZeroArm = true;
+    SmartDashboard.putBoolean("Arm Good To Go", !needToZeroArm);
+  }
+
+  private void weNoLongerNeedToZero() {
+    needToZeroArm = false;
+    SmartDashboard.putBoolean("Arm Good To Go", !needToZeroArm);
+  }
+
 
   @Override
   public void autonomousInit() {
@@ -132,7 +147,8 @@ public class Robot extends TimedRobot {
   @Override
   public void teleopInit() {
     System.out.println("Teleop Initialized!");
-    needToZeroArm = true;
+    weNeedToZero();
+    m_liftarm_motor.setSelectedSensorPosition(0); //REMOVE AFTER TESTING
   }
 
 
@@ -149,12 +165,24 @@ public class Robot extends TimedRobot {
 
     double err = setpoint - pos; //P
 
+    System.out.println("EROR:");
+
+    System.out.println( err);
+
+    System.out.println(lastArmErr);
+    System.out.println(Constants.DT);
+
     double errSlope = (err - lastArmErr) / Constants.DT; //D
+
+    System.out.println(errSlope);
 
     armI += err * Constants.DT; //I
 
     double voltage =  Constants.Arm.P * err +  Constants.Arm.I * armI + Constants.Arm.D * errSlope;
     lastArmErr = err;
+
+    System.out.println(voltage);
+
     return voltage;
   }
 
@@ -170,9 +198,13 @@ public class Robot extends TimedRobot {
 
   @Override
   public void teleopPeriodic() {
-
     double joyl = joyL.getY();
     double joyr = joyR.getY();
+    joyl = (joyl * joyl) * Math.signum(joyl); //Input squaring
+    joyr = (joyr * joyr) * Math.signum(joyr);
+
+    joyl *= Constants.Drive.TELE_SPEED_MULT;
+    joyr *= Constants.Drive.TELE_SPEED_MULT;
     
     double l = calcDriveFF(joyl, Math.min(Math.abs(joyl-lastL), Constants.Drive.MAX_ACC) * Math.signum(joyl-lastL));
     double r = calcDriveFF(joyr, Math.min(Math.abs(joyr-lastR), Constants.Drive.MAX_ACC) * Math.signum(joyr-lastR));
@@ -207,7 +239,7 @@ public class Robot extends TimedRobot {
         m_liftarm_motor.setSelectedSensorPosition(0); 
         m_liftarm_motor.set(0);
         
-        needToZeroArm = false;
+        weNoLongerNeedToZero();
       } else {
         m_liftarm_motor.setVoltage(Constants.Arm.ZEROING_VOLTAGE);
       }
@@ -227,7 +259,8 @@ public class Robot extends TimedRobot {
       //Finally, X will cause the robot to try to GRAB a cube or cone, and
       // Y will try to DROP a cube or cone. Keep in mind the Pnumatics are not super fast!
 
-      double dpadAngle = joyOperator.getPOV(0);
+      
+      int dpadAngle = joyOperator.getPOV(0);
       switch (dpadAngle) {
         case 0:   armTarget = Constants.Arm.ANGLE_HI;   break;
         case 90:  armTarget = Constants.Arm.ANGLE_MID;  break;
@@ -240,7 +273,7 @@ public class Robot extends TimedRobot {
           inManualArmMode = true;
           prevArmTarget = armTarget;
         }
-        armTarget += joyOperator.getRawAxis(LogitechF130Controller.kLeftStickY);
+        armTarget += joyOperator.getRawAxis(LogitechF130Controller.kAxisLeftStickY);
       } else if (inManualArmMode) {
         armTarget = prevArmTarget;
         inManualArmMode = false;
@@ -249,6 +282,7 @@ public class Robot extends TimedRobot {
       
       //Automatic control
       double armV = calcArmPID(armTarget, getArmAngle());
+      //double armV = joyOperator.getRawAxis(LogitechF130Controller.kAxisLeftStickY) * 5;
       SmartDashboard.putNumber("Arm Voltage", armV);
       m_liftarm_motor.setVoltage(armV);
 
