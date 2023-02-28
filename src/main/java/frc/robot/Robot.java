@@ -165,23 +165,13 @@ public class Robot extends TimedRobot {
 
     double err = setpoint - pos; //P
 
-    System.out.println("EROR:");
-
-    System.out.println( err);
-
-    System.out.println(lastArmErr);
-    System.out.println(Constants.DT);
-
     double errSlope = (err - lastArmErr) / Constants.DT; //D
-
-    System.out.println(errSlope);
 
     armI += err * Constants.DT; //I
 
     double voltage =  Constants.Arm.P * err +  Constants.Arm.I * armI + Constants.Arm.D * errSlope;
     lastArmErr = err;
 
-    System.out.println(voltage);
 
     return voltage;
   }
