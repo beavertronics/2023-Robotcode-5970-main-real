@@ -23,6 +23,8 @@ public final class Constants {
         //TELE_SPEED_MULT only applies to teleop.
 
         public static final double TELE_SPEED_MULT = 5; //Fast!
+
+        public static final double ROTATIONS_PER_INCH = 576.79641; //IN LOW GEAR ONLY!!
     }
 
     public final class Arm {
@@ -47,6 +49,28 @@ public final class Constants {
         public static final float ANGLE_LO   = 30;  //Angle that gets us the closest to the ground (May go unused)
         public static final float ANGLE_HOLD = 0;   //Angle that gets the arm all the way inside the frame perimeter
 
+    }
+    public final class Auto {
+        public static final double STATION_DETECTION_TILT = 10; 
+        //How far the robot has to tilt before it can assume it's at least partially on the charge station
+
+        public static final double STATION_EXIT_DETECTION_TILT = 1;
+        //How close to level the robot has to be before it can assume it's mostly off the charge station
+
+        public static final double STATION_EXIT_EXTRA_DIST = 6;
+        //How many extra inches to travel after hitting STATION_EXIT_DETECTION_TILT to be fully off of the station and out of the community
+
+
+        public static final double LEAVE_DIST = 5 * 12;
+        //How many inches to travel to fully leave the COMMUNITY.
+
+        public static final double TRAVERSAL_SPEED = 3.5; //Auto will try to run at 3 feet per second.
+         //Speed while leveling the charge station is automagically adjusted by PD controller
+
+        public static final double LEVELING_TOLERANCE = 0.5; //How close the robot will try to get to perfectly level
+
+        //The tolerance on drive station counting as level is about 2 + 1/2 degrees
+        //Gyro accuracy is about 1 degree and it does drift pretty bad.
     }
 
     public final class LogitechF130Controller {

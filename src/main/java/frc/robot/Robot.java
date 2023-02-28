@@ -9,6 +9,7 @@ import frc.robot.Constants.LogitechF130Controller;
 
 import com.revrobotics.CANSparkMax;
 import com.revrobotics.CANSparkMaxLowLevel.MotorType;
+import com.revrobotics.SparkMaxRelativeEncoder;
 // import com.ctre.phoenix.motorcontrol.TalonFXControlMode; Not needed because we're using the WPI_Lib version
 import com.ctre.phoenix.motorcontrol.can.WPI_TalonFX;
 
@@ -36,8 +37,10 @@ public class Robot extends TimedRobot {
 
   /*Auto Switching setup */
   enum Autos {
-    MSP ("Just move forwards and shoot and pray"),
-    Nothing ("Just sit there");
+    LEAVE ("Just drive forwards to leave the Community")
+    ENGAGE_STATION ("Drive forwards onto the charge station and try to level it"),
+    LEAVE_THEN_ENGAGE_STATION ("Drive over the charge station and leave the community, then reverse onto leveling the charge station.")
+    NOTHING ("Just sit there");
 
     public String desc;
     private Autos(String desc) {
@@ -49,21 +52,24 @@ public class Robot extends TimedRobot {
 
   private final WPI_TalonFX m_liftarm_motor = new WPI_TalonFX(10);
 
-
+  private final CANSparkMax usedForGrabbingEncoderL = new CANSparkMax(21, MotorType.kBrushless);
+  private final CANSparkMax usedForGrabbingEncoderR = new CANSparkMax(24, MotorType.kBrushless);
 
   private final MotorController m_rightmotors = 
   new MotorControllerGroup(
-    new CANSparkMax(21, MotorType.kBrushless), 
+    usedForGrabbingEncoderL,
     new CANSparkMax(22, MotorType.kBrushless), 
     new CANSparkMax(23, MotorType.kBrushless));
 
   private final MotorController m_leftmotors = 
   new MotorControllerGroup(
-    new CANSparkMax(24, MotorType.kBrushless),
+    usedForGrabbingEncoderR,
     new CANSparkMax(25, MotorType.kBrushless),
     new CANSparkMax(26, MotorType.kBrushless));
 
   private final DifferentialDrive m_drive = new DifferentialDrive(m_leftmotors, m_rightmotors);
+  private final SparkMaxRelativeEncoder encoderL = usedForGrabbingEncoderL.getEncoder();
+  private final SparkMaxRelativeEncoder encoderR = usedForGrabbingEncoderR.getEncoder();
 
   private final ADXRS450_Gyro m_gyro = new ADXRS450_Gyro(SPI.Port.kOnboardCS0);
 
@@ -91,7 +97,7 @@ public class Robot extends TimedRobot {
   @Override
   public void robotInit() {
 
-    autoChooser.setDefaultOption(Autos.Nothing.desc, Autos.Nothing);
+    autoChooser.setDefaultOption(Autos.NOTHING.desc, Autos.NOTHING);
     for (Autos auto : Autos.values()) {
       autoChooser.addOption(auto.desc, auto);
     }
@@ -132,31 +138,148 @@ public class Robot extends TimedRobot {
     SmartDashboard.putNumber("Right Drive Voltage",r);
   }
 
-  private void weNeedToZero() {
-    needToZeroArm = true;
-    SmartDashboard.putBoolean("Arm Good To Go", !needToZeroArm);
+  private void approachChargeStation(boolean backwards) { //Drives forwards until it sees a change in gyro value to indicate it has gotten to the charge station
+    if (Math.abs(m_gyro.getAngle()) > Constants.Auto.STATION_DETECTION_TILT) {
+      return true;
+    } 
+    double targetSpeed = Constants.Auto.TRAVERSAL_SPEED;
+    if (backwards) {
+      targetSpeed *= -1;
+    }
+    tankDrivewithFF(targetSpeed,targetSpeed,encoderL.getVelocity(), encoderR.getVelocity());
+    return false;
   }
 
-  private void weNoLongerNeedToZero() {
-    needToZeroArm = false;
-    SmartDashboard.putBoolean("Arm Good To Go", !needToZeroArm);
+  private void leaveChargeStation(boolean backwards) { //Drives forwards until it thinks it is off the charge station
+    if (Math.abs(m_gyro.getAngle()) < Constants.Auto.STATION_EXIT_DETECTION_TILT) {
+      return true;
+    } 
+    double targetSpeed = Constants.Auto.TRAVERSAL_SPEED;
+    if (backwards) {
+      targetSpeed *= -1;
+    }
+    tankDrivewithFF(targetSpeed,targetSpeed,encoderL.getVelocity(), encoderR.getVelocity());
+    return false;
+  }
+
+  double lastTiltErr = 0;
+  private void engageChargeStation() {
+    //ONLY LOOP THIS ONCE YOU HAVE GOTTEN A true FROM approachChargeStation!
+    double err = m_gyro.getAngle(); //We want gyro angle to be zero!
+    double errSlope = (err - lastTiltErr) / Constants.DT;
+
+    //Tell drivers once we think charge station is level
+    SmartDashboard.putBoolean("Platform Good", Math.abs(err) < Constants.Auto.LEVELING_TOLERANCE);
+
+    double p = err * Constants.Auto.LEVELING_KP + errSlope * Constants.Auto.LEVELING_KD;
+
+    tankDriveWithFF(p, p, encoderL.getVelocity(), encoderR.getVelocity());
+
+    
+  }
+
+  private int autoStepNumber = 0;
+  private void justEngageChargeStation() {
+    switch (autoStepNumber) {
+      case 0: 
+        boolean gotToChargeStation = approachChargeStation(false);
+        if (gotToChargeStation) {
+          SmartDashboard.putBoolean("Approached Charge Station", true);
+          lastTiltErr = m_gyro.getAngle(); //Setup for engageChargeStation();
+          autoStepNumber++;
+        } 
+        return;
+      case 1:
+        engageChargeStation();
+        return;
+    }
+  }
+
+  private void leaveCommunityThenEngageChargeStation() {
+    switch (autoStepNumber) {
+      case 0:
+        if (approachChargeStation(false)) {
+          autoStepNumber++;
+        }
+        return;
+      case 1:
+        if (leaveChargeStation(false)) {
+          encoderL.setPosition(0);
+          encoderR.setPosition(0);
+          autoStepNumber++;
+        } 
+        return;
+      case 2:
+        if ((encoderL.getPosition() + encoderR.getPosition()) / 2 >= Constants.Auto.STATION_EXIT_EXTRA_DIST * Constants.Drive.ROTATIONS_PER_INCH) {
+          leftCommunity = true;
+          SmartDashboard.putBoolean("Left Community", true);
+          autoStepNumber++;
+        } else {
+          tankDriveWithFF(Constants.Auto.TRAVERSAL_SPEED, Constants.Auto.TRAVERSAL_SPEED,encoderL.getVelocity(), encoderR.getVelocity() );
+        }
+        return;
+      case 3:
+        if (approachChargeStation(true)) {
+          autoStepNumber++;
+        }
+        return;
+      case 4:
+        engageChargeStation();
+    }
+  }
+
+  private void leaveCommunity() {
+    switch(autoStepNumber) {
+      case 0:
+        if ((encoderL.getPosition() + encoderR.getPosition()) / 2 >= Constants.Auto.LEAVE_DIST *  Constants.Drive.ROTATIONS_PER_INCH) {
+          leftCommunity = true;
+          SmartDashboard.putBoolean("Left Community", true);
+          autoStepNumber++;
+        } else {
+          tankDriveWithFF(Constants.Auto.TRAVERSAL_SPEED, Constants.Auto.TRAVERSAL_SPEED,encoderL.getVelocity(), encoderR.getVelocity() );
+        }
+        return;
+      case 1:
+        //We did it!!
+        //Now would be a good time to flash some blinkenlights :)
+        return;
+    }
   }
 
 
   @Override
   public void autonomousInit() {
     m_autoSelected = autoChooser.getSelected();
- 
     System.out.println("Auto selected: " + m_autoSelected.desc);
+    switch (m_autoSelected) {
+      case Autos.ENGAGE_STATION: 
+        SmartDashboard.putBoolean("Approached Charge Station", false);
+        break;
+      case Autos.LEAVE_THEN_ENGAGE_STATION:
+        SmartDashboard.putBoolean("Left Community", false);
+        break;
+      case Autos.LEAVE:
+        SmartDashboard.putBoolean("Left Community", false);
+        break;
+    }
+ 
+    autoStepNumber = 0; //If you don't start from square zero, things go very wrong (;
+
     autoStartTime = System.currentTimeMillis();
   }
 
   /** This function is called periodically during autonomous. */
   @Override
   public void autonomousPeriodic() {
+    SmartDashboard.putNumber("Auto Step",autoStepNumber);
+    if (System.currentTimeMillis() - autoStartTime > 15 * 1000) {
+      return; //Autonomous is done; wait for it to switch to teleop
+    }
     switch (m_autoSelected) {
-      case Nothing: break;
-      case MSP: throw new Error("This opmode is unimplemented!");
+      case Autos.NOTHING: break;
+      case Autos.LEAVE: leaveCommunity(); break;
+      case Autos.ENGAGE_STATION: justEngageChargeStation();break; 
+      case Autos.LEAVE_THEN_ENGAGE_STATION: leaveCommunityThenEngageChargeStation();break;
       default:   throw new Error("Invalid Opmode!");
     }
   }
@@ -178,6 +301,18 @@ public class Robot extends TimedRobot {
 
   private double lastArmErr = 0; //Last 
   private double armI = 0; //Integral accumulator for arm PID
+  private boolean needToZeroArm = false; //Whether or not we need to find the zero point w/ lim switch
+
+  private void weNeedToZero() {
+    needToZeroArm = true;
+    SmartDashboard.putBoolean("Arm Good To Go", !needToZeroArm);
+  }
+
+  private void weNoLongerNeedToZero() {
+    needToZeroArm = false;
+    SmartDashboard.putBoolean("Arm Good To Go", !needToZeroArm);
+  }
+
 
   private double calcArmPID(double setpoint, double pos) {
 
@@ -199,7 +334,7 @@ public class Robot extends TimedRobot {
   double lastL = 0; //Last position of left control
   double lastR = 0;
 
-  boolean needToZeroArm = false;
+
   boolean inManualArmMode = false;
   double armTarget     = Constants.Arm.ANGLE_HOLD;
   double prevArmTarget = Constants.Arm.ANGLE_HOLD;
