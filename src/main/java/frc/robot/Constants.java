@@ -60,6 +60,8 @@ public final class Constants {
         public static final double STATION_EXIT_EXTRA_DIST = 6;
         //How many extra inches to travel after hitting STATION_EXIT_DETECTION_TILT to be fully off of the station and out of the community
 
+        public static final double LEVELING_KP = 1;
+        public static final double LEVELING_KD = 0;
 
         public static final double LEAVE_DIST = 5 * 12;
         //How many inches to travel to fully leave the COMMUNITY.

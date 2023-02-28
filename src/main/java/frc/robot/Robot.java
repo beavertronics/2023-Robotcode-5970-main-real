@@ -8,8 +8,8 @@ import frc.robot.Constants;
 import frc.robot.Constants.LogitechF130Controller;
 
 import com.revrobotics.CANSparkMax;
+import com.revrobotics.RelativeEncoder;
 import com.revrobotics.CANSparkMaxLowLevel.MotorType;
-import com.revrobotics.SparkMaxRelativeEncoder;
 // import com.ctre.phoenix.motorcontrol.TalonFXControlMode; Not needed because we're using the WPI_Lib version
 import com.ctre.phoenix.motorcontrol.can.WPI_TalonFX;
 
@@ -37,9 +37,9 @@ public class Robot extends TimedRobot {
 
   /*Auto Switching setup */
   enum Autos {
-    LEAVE ("Just drive forwards to leave the Community")
+    LEAVE ("Just drive forwards to leave the Community"),
     ENGAGE_STATION ("Drive forwards onto the charge station and try to level it"),
-    LEAVE_THEN_ENGAGE_STATION ("Drive over the charge station and leave the community, then reverse onto leveling the charge station.")
+    LEAVE_THEN_ENGAGE_STATION ("Drive over the charge station and leave the community, then reverse onto leveling the charge station."),
     NOTHING ("Just sit there");
 
     public String desc;
@@ -68,8 +68,8 @@ public class Robot extends TimedRobot {
     new CANSparkMax(26, MotorType.kBrushless));
 
   private final DifferentialDrive m_drive = new DifferentialDrive(m_leftmotors, m_rightmotors);
-  private final SparkMaxRelativeEncoder encoderL = usedForGrabbingEncoderL.getEncoder();
-  private final SparkMaxRelativeEncoder encoderR = usedForGrabbingEncoderR.getEncoder();
+  private final RelativeEncoder encoderL = usedForGrabbingEncoderL.getEncoder();
+  private final RelativeEncoder encoderR = usedForGrabbingEncoderR.getEncoder();
 
   private final ADXRS450_Gyro m_gyro = new ADXRS450_Gyro(SPI.Port.kOnboardCS0);
 
@@ -118,14 +118,14 @@ public class Robot extends TimedRobot {
   @Override
   public void robotPeriodic() {}
 
-  private void limitAbsWithSign(v, l) {
+  private double limitAbsWithSign(double v, double l) {
     // If v is greater than l, use l instead of v
     // If v is less than -l, use -l instead of v
     // Otherwise v is between +-l so we're good.
     return Math.min(Math.abs(v), l) * Math.signum(v);
   }
 
-  private void tankDriveWithFF(targetVelL, targetVelR, lastVelL, lastVelR) {
+  private void tankDriveWithFF(double targetVelL, double targetVelR, double lastVelL, double lastVelR) {
     //Tank Drive, but using fancy feedforwards stuff
     double l = calcDriveFF(targetVelL, limitAbsWithSign((targetVelL - lastVelL) / Constants.DT, Constants.Drive.MAX_ACC));
     double r = calcDriveFF(targetVelR, limitAbsWithSign((targetVelR - lastVelR) / Constants.DT, Constants.Drive.MAX_ACC));
@@ -138,7 +138,7 @@ public class Robot extends TimedRobot {
     SmartDashboard.putNumber("Right Drive Voltage",r);
   }
 
-  private void approachChargeStation(boolean backwards) { //Drives forwards until it sees a change in gyro value to indicate it has gotten to the charge station
+  private boolean approachChargeStation(boolean backwards) { //Drives forwards until it sees a change in gyro value to indicate it has gotten to the charge station
     if (Math.abs(m_gyro.getAngle()) > Constants.Auto.STATION_DETECTION_TILT) {
       return true;
     } 
@@ -146,11 +146,11 @@ public class Robot extends TimedRobot {
     if (backwards) {
       targetSpeed *= -1;
     }
-    tankDrivewithFF(targetSpeed,targetSpeed,encoderL.getVelocity(), encoderR.getVelocity());
+    tankDriveWithFF(targetSpeed,targetSpeed,encoderL.getVelocity(), encoderR.getVelocity());
     return false;
   }
 
-  private void leaveChargeStation(boolean backwards) { //Drives forwards until it thinks it is off the charge station
+  private boolean leaveChargeStation(boolean backwards) { //Drives forwards until it thinks it is off the charge station
     if (Math.abs(m_gyro.getAngle()) < Constants.Auto.STATION_EXIT_DETECTION_TILT) {
       return true;
     } 
@@ -158,7 +158,7 @@ public class Robot extends TimedRobot {
     if (backwards) {
       targetSpeed *= -1;
     }
-    tankDrivewithFF(targetSpeed,targetSpeed,encoderL.getVelocity(), encoderR.getVelocity());
+    tankDriveWithFF(targetSpeed,targetSpeed,encoderL.getVelocity(), encoderR.getVelocity());
     return false;
   }
 
@@ -211,7 +211,6 @@ public class Robot extends TimedRobot {
         return;
       case 2:
         if ((encoderL.getPosition() + encoderR.getPosition()) / 2 >= Constants.Auto.STATION_EXIT_EXTRA_DIST * Constants.Drive.ROTATIONS_PER_INCH) {
-          leftCommunity = true;
           SmartDashboard.putBoolean("Left Community", true);
           autoStepNumber++;
         } else {
@@ -232,7 +231,6 @@ public class Robot extends TimedRobot {
     switch(autoStepNumber) {
       case 0:
         if ((encoderL.getPosition() + encoderR.getPosition()) / 2 >= Constants.Auto.LEAVE_DIST *  Constants.Drive.ROTATIONS_PER_INCH) {
-          leftCommunity = true;
           SmartDashboard.putBoolean("Left Community", true);
           autoStepNumber++;
         } else {
@@ -252,15 +250,16 @@ public class Robot extends TimedRobot {
     m_autoSelected = autoChooser.getSelected();
     System.out.println("Auto selected: " + m_autoSelected.desc);
     switch (m_autoSelected) {
-      case Autos.ENGAGE_STATION: 
+      case ENGAGE_STATION: 
         SmartDashboard.putBoolean("Approached Charge Station", false);
         break;
-      case Autos.LEAVE_THEN_ENGAGE_STATION:
+      case LEAVE_THEN_ENGAGE_STATION:
         SmartDashboard.putBoolean("Left Community", false);
         break;
-      case Autos.LEAVE:
+      case LEAVE:
         SmartDashboard.putBoolean("Left Community", false);
         break;
+      case NOTHING: break;
     }
  
     autoStepNumber = 0; //If you don't start from square zero, things go very wrong (;
@@ -276,10 +275,10 @@ public class Robot extends TimedRobot {
       return; //Autonomous is done; wait for it to switch to teleop
     }
     switch (m_autoSelected) {
-      case Autos.NOTHING: break;
-      case Autos.LEAVE: leaveCommunity(); break;
-      case Autos.ENGAGE_STATION: justEngageChargeStation();break; 
-      case Autos.LEAVE_THEN_ENGAGE_STATION: leaveCommunityThenEngageChargeStation();break;
+      case NOTHING: break;
+      case LEAVE: leaveCommunity(); break;
+      case ENGAGE_STATION: justEngageChargeStation();break; 
+      case LEAVE_THEN_ENGAGE_STATION: leaveCommunityThenEngageChargeStation();break;
       default:   throw new Error("Invalid Opmode!");
     }
   }
