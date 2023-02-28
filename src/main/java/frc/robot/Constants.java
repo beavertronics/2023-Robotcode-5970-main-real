@@ -19,6 +19,9 @@ public final class Constants {
         public static final float MAX_ACC = 99999; //Maximum acceleration
         public static final float DRIVE_V_LIMIT = 12; //Voltage limit
 
+        //All of the above apply to BOTH teleop AND AUTONOMOUS!
+        //TELE_SPEED_MULT only applies to teleop.
+
         public static final double TELE_SPEED_MULT = 5; //Fast!
     }
 

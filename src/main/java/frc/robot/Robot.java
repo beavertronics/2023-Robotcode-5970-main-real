@@ -97,9 +97,11 @@ public class Robot extends TimedRobot {
     }
     SmartDashboard.putData("Auto Choices:", autoChooser);
 
+    shiftinator.set(true);
+
     m_leftmotors.setInverted(false); //Making sure they go the right way
     m_rightmotors.setInverted(true);
-    m_gyro.calibrate();
+    //m_gyro.calibrate(); This happens on init and doing it here could mess things up
 
     //Don't zero the arm here, we're not allowed to move on startup
 
@@ -110,8 +112,24 @@ public class Robot extends TimedRobot {
   @Override
   public void robotPeriodic() {}
 
-  private void driveAutomatic(double startPos, double dist, double targetSpeed) {
+  private void limitAbsWithSign(v, l) {
+    // If v is greater than l, use l instead of v
+    // If v is less than -l, use -l instead of v
+    // Otherwise v is between +-l so we're good.
+    return Math.min(Math.abs(v), l) * Math.signum(v);
+  }
 
+  private void tankDriveWithFF(targetVelL, targetVelR, lastVelL, lastVelR) {
+    //Tank Drive, but using fancy feedforwards stuff
+    double l = calcDriveFF(targetVelL, limitAbsWithSign((targetVelL - lastVelL) / Constants.DT, Constants.Drive.MAX_ACC));
+    double r = calcDriveFF(targetVelR, limitAbsWithSign((targetVelR - lastVelR) / Constants.DT, Constants.Drive.MAX_ACC));
+
+    m_rightmotors.setVoltage(limitAbsWithSign(r, Constants.Drive.DRIVE_V_LIMIT));
+    m_leftmotors.setVoltage (limitAbsWithSign(l, Constants.Drive.DRIVE_V_LIMIT));
+    m_drive.feed(); //Required for some wierd reason.
+
+    SmartDashboard.putNumber("Left Drive Voltage",l);
+    SmartDashboard.putNumber("Right Drive Voltage",r);
   }
 
   private void weNeedToZero() {
@@ -190,33 +208,20 @@ public class Robot extends TimedRobot {
   public void teleopPeriodic() {
     double joyl = joyL.getY();
     double joyr = joyR.getY();
-    joyl = (joyl * joyl) * Math.signum(joyl); //Input squaring
-    joyr = (joyr * joyr) * Math.signum(joyr);
+    //joyl = (joyl * joyl) * Math.signum(joyl); //Input squaring
+    //joyr = (joyr * joyr) * Math.signum(joyr); //Disabled; it was too much
 
     joyl *= Constants.Drive.TELE_SPEED_MULT;
     joyr *= Constants.Drive.TELE_SPEED_MULT;
     
-    double l = calcDriveFF(joyl, Math.min(Math.abs(joyl-lastL), Constants.Drive.MAX_ACC) * Math.signum(joyl-lastL));
-    double r = calcDriveFF(joyr, Math.min(Math.abs(joyr-lastR), Constants.Drive.MAX_ACC) * Math.signum(joyr-lastR));
-
-    lastL = joyl;
-    lastR = joyr;
-
-
-
-    //Tank Drive1-
-    m_rightmotors.setVoltage(Math.min(Math.abs(r), Constants.Drive.DRIVE_V_LIMIT) * Math.signum(r));
-    m_leftmotors.setVoltage(Math.min(Math.abs(l), Constants.Drive.DRIVE_V_LIMIT) * Math.signum(l));
-    m_drive.feed();
-    SmartDashboard.putNumber("Left Drive Voltage",l);
-    SmartDashboard.putNumber("Right Drive Voltage",r);
+    tankDriveWithFF(joyl, joyr, encoderL.getVelocity(), encoderR.getVelocity());
 
 
     double tilt = m_gyro.getAngle();
     SmartDashboard.putNumber("Gyro", tilt);
 
     //Solonoids
-    shiftinator.set(joyR.getTrigger());
+    shiftinator.set(!joyR.getRawButton(2));
     if (joyOperator.getRawButton(LogitechF130Controller.kButtonX)) grabinator.set(true);
     if (joyOperator.getRawButton(LogitechF130Controller.kButtonY)) grabinator.set(false);
 
