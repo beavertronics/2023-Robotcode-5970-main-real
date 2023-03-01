@@ -14,7 +14,7 @@ public final class Constants {
     public final class Drive {
         public static final double KS = 0.24571; //Voltage required to overcome static friction
         public static final double KV = 0.57682; //Voltage required to stay moving at 1 f/s
-        public static final double KA = 0.24682; //Voltage required to accelerate at 1 f/s/s
+        public static final double KA = 0.1;//0.24682; //Voltage required to accelerate at 1 f/s/s
 
         public static final float MAX_ACC = 2; //Maximum acceleration
         public static final float DRIVE_V_LIMIT = 12; //Voltage limit
@@ -22,7 +22,7 @@ public final class Constants {
         //All of the above apply to BOTH teleop AND AUTONOMOUS!
         //TELE_SPEED_MULT only applies to teleop.
 
-        public static final double TELE_SPEED_MULT = 0.3; //Fast!
+        public static final double TELE_SPEED_MULT = 7; //Fast!
         //The speed range of the bot should be from 0f/s to TELE_SPEED_MULT f/s
         // But problems...
 

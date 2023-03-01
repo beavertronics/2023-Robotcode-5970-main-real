@@ -339,6 +339,8 @@ public class Robot extends TimedRobot {
   double armTarget     = Constants.Arm.ANGLE_HOLD;
   double prevArmTarget = Constants.Arm.ANGLE_HOLD;
 
+  double averageL = 0;
+
   @Override
   public void teleopPeriodic() {
     if (joyL.getRawButton(3)) {
@@ -357,6 +359,7 @@ public class Robot extends TimedRobot {
       joyl *= Constants.Drive.TELE_SPEED_MULT;
       joyr *= Constants.Drive.TELE_SPEED_MULT;
 
+      averageL += encoderL.getVelocity() * Constants.Drive.ENCODER_COUNTS_TO_FEET;
 
       
       tankDriveWithFF(
