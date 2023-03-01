@@ -13,40 +13,47 @@ public final class Constants {
 
     public final class Drive {
         public static final double KS = 0.24571; //Voltage required to overcome static friction
-        public static final double KV = 1.8927; //Voltage required to stay moving at 1 f/s
-        public static final double KA = 0.80986; //Voltage required to accelerate at 1 f/s/s
+        public static final double KV = 0.57682; //Voltage required to stay moving at 1 f/s
+        public static final double KA = 0.24682; //Voltage required to accelerate at 1 f/s/s
 
-        public static final float MAX_ACC = 99999; //Maximum acceleration
+        public static final float MAX_ACC = 2; //Maximum acceleration
         public static final float DRIVE_V_LIMIT = 12; //Voltage limit
 
         //All of the above apply to BOTH teleop AND AUTONOMOUS!
         //TELE_SPEED_MULT only applies to teleop.
 
-        public static final double TELE_SPEED_MULT = 5; //Fast!
+        public static final double TELE_SPEED_MULT = 0.3; //Fast!
+        //The speed range of the bot should be from 0f/s to TELE_SPEED_MULT f/s
+        // But problems...
 
-        public static final double ROTATIONS_PER_INCH = 576.79641; //IN LOW GEAR ONLY!!
+        public static final double LOW_GEAR = 1.0/24.0;
+        public static final double WHEEL_DIA = (7.65 / 12.0) * Math.PI;
+        public static final double ENCODER_COUNTS_TO_FEET = LOW_GEAR * WHEEL_DIA;
+
+        public static final double ROTATIONS_PER_INCH = 12.0/ENCODER_COUNTS_TO_FEET; //IN LOW GEAR ONLY!!
     }
 
     public final class Arm {
 
-        public static final float ENCODER_COUNTS_PER_REV = 2048; //
-        public static final float RATIO = 400 / 1 ;//Gear ratio from falcon to arm; how many falcon rotations per arm rotation
+        public static final double ENCODER_COUNTS_PER_REV = 2048.0; //
+        public static final double RATIO = 1.0 / 400.0 ;//Gear ratio from falcon to arm; how many falcon rotations per arm rotation
 
-        public static final double ENCODER_COUNTS_PER_ARM_REV = ENCODER_COUNTS_PER_REV * RATIO;
-        public static final double ENCODER_COUNTS_TO_ARM_DEGS = 360/ENCODER_COUNTS_PER_ARM_REV;
+        public static final double ENCODER_COUNTS_PER_ARM_REV = ENCODER_COUNTS_PER_REV / RATIO;
+        public static final double ENCODER_COUNTS_TO_ARM_DEGS = 1.0 / (ENCODER_COUNTS_PER_ARM_REV / 360.0);
 
+        public static final double ARM_V_LIMIT = 10; //Limit output of arm PID via clamping
 
         public static final double P = 1.5;
         public static final float I = 0;
         public static final float D = 0;
-        public static final float ZEROING_VOLTAGE = -12/2; //Voltage for sending arm to start
+        public static final float ZEROING_VOLTAGE = -4; //Voltage for sending arm to start
 
         //Reasonable estimates from CAD
         //Need to be tuned
         //Note: Relative to limit switch hit position!
-        public static final float ANGLE_HI   = 100; //Angle required to reach highest row on a Grid
-        public static final float ANGLE_MID  = 85;  //Angle required to reach middle row on a Grid
-        public static final float ANGLE_LO   = 30;  //Angle that gets us the closest to the ground (May go unused)
+        public static final float ANGLE_HI   = 122; //Angle required to reach highest row on a Grid
+        public static final float ANGLE_MID  = 92;  //Angle required to reach middle row on a Grid
+        public static final float ANGLE_LO   = 32;  //Angle that gets us the closest to the ground (May go unused)
         public static final float ANGLE_HOLD = 0;   //Angle that gets the arm all the way inside the frame perimeter
 
     }
@@ -72,7 +79,7 @@ public final class Constants {
         public static final double LEVELING_TOLERANCE = 0.5; //How close the robot will try to get to perfectly level
 
         //The tolerance on drive station counting as level is about 2 + 1/2 degrees
-        //Gyro accuracy is about 1 degree and it does drift pretty bad.
+        //Gyro accuracy is about 0.75 of a degree
     }
 
     public final class LogitechF130Controller {

@@ -107,7 +107,7 @@ public class Robot extends TimedRobot {
 
     m_leftmotors.setInverted(false); //Making sure they go the right way
     m_rightmotors.setInverted(true);
-    //m_gyro.calibrate(); This happens on init and doing it here could mess things up
+    m_gyro.calibrate();
 
     //Don't zero the arm here, we're not allowed to move on startup
 
@@ -116,7 +116,9 @@ public class Robot extends TimedRobot {
 
   /*Called every 20 ms, no matter the mode.*/
   @Override
-  public void robotPeriodic() {}
+  public void robotPeriodic() {
+    SmartDashboard.putNumber("Gyro", m_gyro.getAngle());
+  }
 
   private double limitAbsWithSign(double v, double l) {
     // If v is greater than l, use l instead of v
@@ -134,7 +136,7 @@ public class Robot extends TimedRobot {
     m_leftmotors.setVoltage (limitAbsWithSign(l, Constants.Drive.DRIVE_V_LIMIT));
     m_drive.feed(); //Required for some wierd reason.
 
-    SmartDashboard.putNumber("Left Drive Voltage",l);
+    SmartDashboard.putNumber("Left Drive Voltage", l);
     SmartDashboard.putNumber("Right Drive Voltage",r);
   }
 
@@ -182,8 +184,7 @@ public class Robot extends TimedRobot {
   private void justEngageChargeStation() {
     switch (autoStepNumber) {
       case 0: 
-        boolean gotToChargeStation = approachChargeStation(false);
-        if (gotToChargeStation) {
+        if (approachChargeStation(false)) {
           SmartDashboard.putBoolean("Approached Charge Station", true);
           lastTiltErr = m_gyro.getAngle(); //Setup for engageChargeStation();
           autoStepNumber++;
@@ -294,7 +295,7 @@ public class Robot extends TimedRobot {
 
   private double calcDriveFF(double targetVel, double targetAcc) {
     return Constants.Drive.KS * Math.signum(targetVel) 
-      + Constants.Drive.KV * targetVel 
+       + Constants.Drive.KV * targetVel 
        + Constants.Drive.KA * targetAcc;
   }
 
@@ -325,7 +326,7 @@ public class Robot extends TimedRobot {
     lastArmErr = err;
 
 
-    return voltage;
+    return limitAbsWithSign(voltage, Constants.Arm.ARM_V_LIMIT);
   }
 
   /** This function is called periodically during operator control. */
@@ -340,19 +341,31 @@ public class Robot extends TimedRobot {
 
   @Override
   public void teleopPeriodic() {
-    double joyl = joyL.getY();
-    double joyr = joyR.getY();
-    //joyl = (joyl * joyl) * Math.signum(joyl); //Input squaring
-    //joyr = (joyr * joyr) * Math.signum(joyr); //Disabled; it was too much
+    if (joyL.getRawButton(3)) {
+      //System.out.println("AAAAA BAD!!"); Debug
+      engageChargeStation();
+    } else {
+      double joyl = joyL.getY();
+      double joyr = joyR.getY();
 
-    joyl *= Constants.Drive.TELE_SPEED_MULT;
-    joyr *= Constants.Drive.TELE_SPEED_MULT;
-    
-    tankDriveWithFF(joyl, joyr, encoderL.getVelocity(), encoderR.getVelocity());
+      if (Math.abs(joyl) < 0.03) joyl = 0;
+      if (Math.abs(joyr) < 0.03) joyr = 0;
+
+      //joyl = (joyl * joyl) * Math.signum(joyl); //Input squaring
+      //joyr = (joyr * joyr) * Math.signum(joyr); //Disabled; it was too much
+  
+      joyl *= Constants.Drive.TELE_SPEED_MULT;
+      joyr *= Constants.Drive.TELE_SPEED_MULT;
 
 
-    double tilt = m_gyro.getAngle();
-    SmartDashboard.putNumber("Gyro", tilt);
+      
+      tankDriveWithFF(
+        joyl, 
+        joyr, 
+        encoderL.getVelocity() * Constants.Drive.ENCODER_COUNTS_TO_FEET, 
+        encoderR.getVelocity() * Constants.Drive.ENCODER_COUNTS_TO_FEET
+      );
+    }
 
     //Solonoids
     shiftinator.set(!joyR.getRawButton(2));
@@ -361,7 +374,7 @@ public class Robot extends TimedRobot {
 
 
     //Arm Lifting!!
-
+    /* 
     if (needToZeroArm) {
       //Arm Zeroing Ritual: Move backwards until we hit the limit switch, then stop and zero the encoder.
       if (getArmZeroSwitchHit()) {
@@ -369,6 +382,7 @@ public class Robot extends TimedRobot {
         m_liftarm_motor.set(0);
         
         weNoLongerNeedToZero();
+        armTarget = Constants.Arm.ANGLE_LO;
       } else {
         m_liftarm_motor.setVoltage(Constants.Arm.ZEROING_VOLTAGE);
       }
@@ -394,7 +408,7 @@ public class Robot extends TimedRobot {
         case 0:   armTarget = Constants.Arm.ANGLE_HI;   break;
         case 90:  armTarget = Constants.Arm.ANGLE_MID;  break;
         case 270: armTarget = Constants.Arm.ANGLE_MID;  break;
-        case 180: armTarget = Constants.Arm.ANGLE_HOLD; break;
+        case 180: armTarget = Constants.Arm.ANGLE_LO; break;//Constants.Arm.ANGLE_HOLD; break;
       }
 
       if (joyOperator.getRawButton(LogitechF130Controller.kButtonLB)) {
@@ -416,6 +430,7 @@ public class Robot extends TimedRobot {
       m_liftarm_motor.setVoltage(armV);
 
     }
+    */
     
   }
   /** This function is called once when the robot is disabled. */
