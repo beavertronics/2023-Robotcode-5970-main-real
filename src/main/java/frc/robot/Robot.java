@@ -1,56 +1,48 @@
-// Copyright (c) FIRST and other WPILib contributors.
-// Open Source Software; you can modify and/or share it under the terms of
-// the WPILib BSD license file in the root directory of this project.
-// Authors: Will Kam
+/* Copyright (c) FIRST and other WPILib contributors.
+   Open Source Software; you can modify and/or share it under the terms of
+   the WPILib BSD license file in the root directory of this project.
+*/
+/** 
+ * @author Will Kam
+ * @author Beavertronics
+*/
 package frc.robot;
 
-import frc.robot.Constants;
+import edu.wpi.first.wpilibj.TimedRobot;
 import frc.robot.Constants.LogitechF130Controller;
 
+//Drive motor control
 import com.revrobotics.CANSparkMax;
 import com.revrobotics.RelativeEncoder;
 import com.revrobotics.CANSparkMaxLowLevel.MotorType;
-// import com.ctre.phoenix.motorcontrol.TalonFXControlMode; Not needed because we're using the WPI_Lib version
-//import com.ctre.phoenix.motorcontrol.can.WPI_TalonFX; Arm is removed
-//import com.kauailabs.navx.frc.AHRS;
-
-import edu.wpi.first.wpilibj.TimedRobot;
-import edu.wpi.first.cameraserver.CameraServer; //Not needed because jetson stuff is fancy
-//import edu.wpi.first.math.controller.PIDController; Just did it myself, they always overcomplicate things
-//import edu.wpi.first.math.controller.SimpleMotorFeedforward;
-
-import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
-import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
-
-import edu.wpi.first.wpilibj.Joystick;
-import edu.wpi.first.wpilibj.SerialPort.Port;
-
-//import edu.wpi.first.wpilibj.XboxController; RIP Xbox controller
-//import edu.wpi.first.wpilibj.SPI;
-//import edu.wpi.first.wpilibj.ADXRS450_Gyro;
-//import edu.wpi.first.wpilibj.DigitalInput;
-
-import edu.wpi.first.wpilibj.Solenoid;
-import edu.wpi.first.wpilibj.PneumaticsModuleType;
 import edu.wpi.first.wpilibj.motorcontrol.MotorController;
 import edu.wpi.first.wpilibj.motorcontrol.MotorControllerGroup;
 import edu.wpi.first.wpilibj.drive.DifferentialDrive;
 
+// import com.ctre.phoenix.motorcontrol.TalonFXControlMode; Not needed because we're using the WPI_Lib version
+//import com.ctre.phoenix.motorcontrol.can.WPI_TalonFX; Arm is removed
+//import edu.wpi.first.wpilibj.DigitalInput; used for arm limit switch but arm is removed
+
+import edu.wpi.first.wpilibj.Solenoid;
+import edu.wpi.first.wpilibj.PneumaticsModuleType;
+
+//import edu.wpi.first.wpilibj.ADXRS450_Gyro; RIP little gyro
+//import edu.wpi.first.wpilibj.SPI; 
+
+//import com.kauailabs.navx.frc.AHRS;
+//import edu.wpi.first.wpilibj.SerialPort.Port;
+
+//import edu.wpi.first.cameraserver.CameraServer; //Not needed because jetson stuff is fancy
+
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
+import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
+import edu.wpi.first.wpilibj.Joystick;
+//import edu.wpi.first.wpilibj.XboxController; RIP Xbox controller
+
+
 public class Robot extends TimedRobot {
 
-  /*Auto Switching setup */
-  enum Autos {
-    LEAVE ("Just drive forwards to leave the Community"),
-    SCORE_LEAVE ("Drive backwards to score, then drive forwards to leave the community."),
-    NOTHING ("Just sit there");
-
-    public String desc;
-    private Autos(String desc) {
-      this.desc= desc;
-    }
-  }
-  private final SendableChooser<Autos> autoChooser = new SendableChooser<>();
-  private Autos m_autoSelected;
+  //========================== ROBOT HARDWARE ==========================//
 
   //private final WPI_TalonFX m_liftarm_motor = new WPI_TalonFX(10);
 
@@ -79,10 +71,26 @@ public class Robot extends TimedRobot {
   private final Solenoid shiftinator = new Solenoid(PneumaticsModuleType.CTREPCM, 1);
   private final Solenoid grabinator  = new Solenoid(PneumaticsModuleType.CTREPCM, 0);
 
+  //================== DRIVER STATION HARDWARE (controllers) ==================//
+
   private final Joystick joyOperator= new Joystick(0);
   private final Joystick joyL = new Joystick(1);
   private final Joystick joyR = new Joystick(2);
 
+
+  /*Auto Switching setup */
+  enum Autos {
+      LEAVE ("Just drive forwards to leave the Community"),
+      SCORE_LEAVE ("Drive backwards to score, then drive forwards to leave the community."),
+      NOTHING ("Just sit there");
+  
+      public String desc;
+      private Autos(String desc) {
+        this.desc= desc;
+      }
+    }
+    private final SendableChooser<Autos> autoChooser = new SendableChooser<>();
+    private Autos m_autoSelected;
 
   @Override
   public void robotInit() {
@@ -112,11 +120,17 @@ public class Robot extends TimedRobot {
     //SmartDashboard.putNumber("NAVX Yaw(Heading)", navXIMU.getYaw());
   }
 
-  private double limitAbsWithSign(double v, double l) {
+  /**
+   * Clamp value between +limit and -limit
+   * @param value 
+   * @param limit
+   * @return Value, limited to + or - limit.
+   */
+  private double limitAbsWithSign(double value, double limit) {
     // If v is greater than l, use l instead of v
     // If v is less than -l, use -l instead of v
     // Otherwise v is between +-l so we're good.
-    return Math.min(Math.abs(v), l) * Math.signum(v);
+    return Math.min(Math.abs(value), limit) * Math.signum(value);
   }
 
   private double getPosL() {
@@ -151,23 +165,20 @@ public class Robot extends TimedRobot {
   double lastDriveErrL = 0;
   double lastDriveErrR = 0;
 
-  private void tankDriveWithFF(double targetVelL, double targetVelR, double lastVelL, double lastVelR) {
+  private void tankDriveWithFF(double targetVelL, double targetVelR, double currentVelL, double currentVelR) {
 
     SmartDashboard.putNumber("Left Drive Target Vel", targetVelL);
     SmartDashboard.putNumber("Right Drive Target Vel", targetVelR);
 
-    double errL = targetVelL - lastVelL;
-    double errSlopeL = (errL - lastDriveErrL) / Constants.DT;
+    double targetAccelerationL = targetVelL - currentVelL;
+    //double errSlopeL = (errL - lastDriveErrL) / Constants.DT;
 
-    double errR = targetVelR - lastVelR;
-    double errSlopeR = (errR - lastDriveErrR) / Constants.DT;
-
-    SmartDashboard.putNumber("Left Drive Vel Err", errL);
-    SmartDashboard.putNumber("Right Drive Vel Err", errR);
+    double targetAccelerationR = targetVelR - currentVelR;
+    //double errSlopeR = (errR - lastDriveErrR) / Constants.DT
 
     //Tank Drive, but using fancy feedforwards stuff
-    double l = calcDriveFF(targetVelL, limitAbsWithSign(errR * Constants.Drive.P + errSlopeL * Constants.Drive.D, Constants.Drive.MAX_ACC));
-    double r = calcDriveFF(targetVelR, limitAbsWithSign(errL * Constants.Drive.P + errSlopeR * Constants.Drive.D, Constants.Drive.MAX_ACC));
+    double l = calcDriveFF(targetVelL, limitAbsWithSign(targetAccelerationL, Constants.Drive.MAX_ACC));
+    double r = calcDriveFF(targetVelR, limitAbsWithSign(targetAccelerationR, Constants.Drive.MAX_ACC));
 
     m_rightmotors.setVoltage(limitAbsWithSign(r, Constants.Drive.DRIVE_V_LIMIT));
     m_leftmotors.setVoltage (limitAbsWithSign(l, Constants.Drive.DRIVE_V_LIMIT));
