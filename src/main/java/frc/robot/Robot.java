@@ -11,10 +11,11 @@ import com.revrobotics.CANSparkMax;
 import com.revrobotics.RelativeEncoder;
 import com.revrobotics.CANSparkMaxLowLevel.MotorType;
 // import com.ctre.phoenix.motorcontrol.TalonFXControlMode; Not needed because we're using the WPI_Lib version
-import com.ctre.phoenix.motorcontrol.can.WPI_TalonFX;
+//import com.ctre.phoenix.motorcontrol.can.WPI_TalonFX; Arm is removed
+//import com.kauailabs.navx.frc.AHRS;
 
 import edu.wpi.first.wpilibj.TimedRobot;
-//import edu.wpi.first.cameraserver.CameraServer; Not needed because jetson stuff is fancy
+import edu.wpi.first.cameraserver.CameraServer; //Not needed because jetson stuff is fancy
 //import edu.wpi.first.math.controller.PIDController; Just did it myself, they always overcomplicate things
 //import edu.wpi.first.math.controller.SimpleMotorFeedforward;
 
@@ -22,10 +23,12 @@ import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 
 import edu.wpi.first.wpilibj.Joystick;
+import edu.wpi.first.wpilibj.SerialPort.Port;
+
 //import edu.wpi.first.wpilibj.XboxController; RIP Xbox controller
-import edu.wpi.first.wpilibj.SPI;
-import edu.wpi.first.wpilibj.ADXRS450_Gyro;
-import edu.wpi.first.wpilibj.DigitalInput;
+//import edu.wpi.first.wpilibj.SPI;
+//import edu.wpi.first.wpilibj.ADXRS450_Gyro;
+//import edu.wpi.first.wpilibj.DigitalInput;
 
 import edu.wpi.first.wpilibj.Solenoid;
 import edu.wpi.first.wpilibj.PneumaticsModuleType;
@@ -38,8 +41,7 @@ public class Robot extends TimedRobot {
   /*Auto Switching setup */
   enum Autos {
     LEAVE ("Just drive forwards to leave the Community"),
-    ENGAGE_STATION ("Drive forwards onto the charge station and try to level it"),
-    LEAVE_THEN_ENGAGE_STATION ("Drive over the charge station and leave the community, then reverse onto leveling the charge station."),
+    SCORE_LEAVE ("Drive backwards to score, then drive forwards to leave the community."),
     NOTHING ("Just sit there");
 
     public String desc;
@@ -50,20 +52,20 @@ public class Robot extends TimedRobot {
   private final SendableChooser<Autos> autoChooser = new SendableChooser<>();
   private Autos m_autoSelected;
 
-  private final WPI_TalonFX m_liftarm_motor = new WPI_TalonFX(10);
+  //private final WPI_TalonFX m_liftarm_motor = new WPI_TalonFX(10);
 
-  private final CANSparkMax usedForGrabbingEncoderL = new CANSparkMax(21, MotorType.kBrushless);
-  private final CANSparkMax usedForGrabbingEncoderR = new CANSparkMax(24, MotorType.kBrushless);
-
+  private final CANSparkMax usedForGrabbingEncoderR = new CANSparkMax(21, MotorType.kBrushless);
   private final MotorController m_rightmotors = 
   new MotorControllerGroup(
-    usedForGrabbingEncoderL,
+    usedForGrabbingEncoderR,
     new CANSparkMax(22, MotorType.kBrushless), 
     new CANSparkMax(23, MotorType.kBrushless));
+    
 
+  private final CANSparkMax usedForGrabbingEncoderL = new CANSparkMax(24, MotorType.kBrushless);
   private final MotorController m_leftmotors = 
   new MotorControllerGroup(
-    usedForGrabbingEncoderR,
+    usedForGrabbingEncoderL,
     new CANSparkMax(25, MotorType.kBrushless),
     new CANSparkMax(26, MotorType.kBrushless));
 
@@ -71,8 +73,8 @@ public class Robot extends TimedRobot {
   private final RelativeEncoder encoderL = usedForGrabbingEncoderL.getEncoder();
   private final RelativeEncoder encoderR = usedForGrabbingEncoderR.getEncoder();
 
-  private final ADXRS450_Gyro m_gyro = new ADXRS450_Gyro(SPI.Port.kOnboardCS0);
-
+  //private final ADXRS450_Gyro m_gyro = new ADXRS450_Gyro(SPI.Port.kOnboardCS0);
+  //private final AHRS navXIMU = new AHRS(Port.kUSB2); //USB2 is BOTTOM USB PORT!!!
 
   private final Solenoid shiftinator = new Solenoid(PneumaticsModuleType.CTREPCM, 1);
   private final Solenoid grabinator  = new Solenoid(PneumaticsModuleType.CTREPCM, 0);
@@ -81,18 +83,6 @@ public class Robot extends TimedRobot {
   private final Joystick joyL = new Joystick(1);
   private final Joystick joyR = new Joystick(2);
 
-  private final DigitalInput armZeroSwitch = new DigitalInput(0);//THIS IS INVERTED- Is false when pressed
-
-  //Cornvinience Functions
-  private boolean getArmZeroSwitchHit() {
-    return !armZeroSwitch.get();
-  }
-  private double getArmAngle() {
-    SmartDashboard.putNumber("Arm Angle",m_liftarm_motor.getSelectedSensorPosition() * Constants.Arm.ENCODER_COUNTS_TO_ARM_DEGS );
-    return m_liftarm_motor.getSelectedSensorPosition() * Constants.Arm.ENCODER_COUNTS_TO_ARM_DEGS;
-  }
-
-  private double autoStartTime = 0;
 
   @Override
   public void robotInit() {
@@ -101,23 +91,25 @@ public class Robot extends TimedRobot {
     for (Autos auto : Autos.values()) {
       autoChooser.addOption(auto.desc, auto);
     }
+
     SmartDashboard.putData("Auto Choices:", autoChooser);
 
     shiftinator.set(true);
 
     m_leftmotors.setInverted(false); //Making sure they go the right way
     m_rightmotors.setInverted(true);
-    m_gyro.calibrate();
 
     //Don't zero the arm here, we're not allowed to move on startup
 
-    //CameraServer.startAutomaticCapture(); jetson stuff replaces this
+    //CameraServer.startAutomaticCapture(); //jetson stuff replaces this
   }
 
   /*Called every 20 ms, no matter the mode.*/
   @Override
   public void robotPeriodic() {
-    SmartDashboard.putNumber("Gyro", m_gyro.getAngle());
+    //SmartDashboard.putNumber("NAVX Pitch", navXIMU.getPitch());
+    //SmartDashboard.putNumber("NAVX Roll", navXIMU.getRoll());
+    //SmartDashboard.putNumber("NAVX Yaw(Heading)", navXIMU.getYaw());
   }
 
   private double limitAbsWithSign(double v, double l) {
@@ -127,159 +119,163 @@ public class Robot extends TimedRobot {
     return Math.min(Math.abs(v), l) * Math.signum(v);
   }
 
+  private double getPosL() {
+    if (shiftinator.get()) { //Low Gear
+      return encoderL.getPosition() * Constants.Drive.INCHES_TO_LOW_GEAR_REVS;
+    } else { //High Gear
+      return encoderL.getPosition() * Constants.Drive.INCHES_TO_HIGH_GEAR_REVS;
+    }
+  }
+  private double getPosR() {
+    if (shiftinator.get()) { //Low Gear
+      return encoderR.getPosition() * Constants.Drive.INCHES_TO_LOW_GEAR_REVS;
+    } else { //High Gear
+      return encoderR.getPosition() * Constants.Drive.INCHES_TO_HIGH_GEAR_REVS;
+    }
+  }
+  private double getVelL() {
+    if (shiftinator.get()) { //Low Gear
+      return encoderL.getVelocity() * Constants.Drive.INCHES_TO_LOW_GEAR_REVS;
+    } else { //High Gear
+      return encoderL.getVelocity() * Constants.Drive.INCHES_TO_HIGH_GEAR_REVS;
+    }
+  }
+  private double getVelR() {
+    if (shiftinator.get()) { //Low Gear
+      return encoderR.getVelocity() * Constants.Drive.INCHES_TO_LOW_GEAR_REVS;
+    } else { //High Gear
+      return encoderR.getVelocity() * Constants.Drive.INCHES_TO_HIGH_GEAR_REVS;
+    }
+  }
+
+  double lastDriveErrL = 0;
+  double lastDriveErrR = 0;
+
   private void tankDriveWithFF(double targetVelL, double targetVelR, double lastVelL, double lastVelR) {
+
+    SmartDashboard.putNumber("Left Drive Target Vel", targetVelL);
+    SmartDashboard.putNumber("Right Drive Target Vel", targetVelR);
+
+    double errL = targetVelL - lastVelL;
+    double errSlopeL = (errL - lastDriveErrL) / Constants.DT;
+
+    double errR = targetVelR - lastVelR;
+    double errSlopeR = (errR - lastDriveErrR) / Constants.DT;
+
+    SmartDashboard.putNumber("Left Drive Vel Err", errL);
+    SmartDashboard.putNumber("Right Drive Vel Err", errR);
+
     //Tank Drive, but using fancy feedforwards stuff
-    double l = calcDriveFF(targetVelL, limitAbsWithSign((targetVelL - lastVelL) / Constants.DT, Constants.Drive.MAX_ACC));
-    double r = calcDriveFF(targetVelR, limitAbsWithSign((targetVelR - lastVelR) / Constants.DT, Constants.Drive.MAX_ACC));
+    double l = calcDriveFF(targetVelL, limitAbsWithSign(errR * Constants.Drive.P + errSlopeL * Constants.Drive.D, Constants.Drive.MAX_ACC));
+    double r = calcDriveFF(targetVelR, limitAbsWithSign(errL * Constants.Drive.P + errSlopeR * Constants.Drive.D, Constants.Drive.MAX_ACC));
 
     m_rightmotors.setVoltage(limitAbsWithSign(r, Constants.Drive.DRIVE_V_LIMIT));
     m_leftmotors.setVoltage (limitAbsWithSign(l, Constants.Drive.DRIVE_V_LIMIT));
-    m_drive.feed(); //Required for some wierd reason.
+    m_drive.feed();
 
-    SmartDashboard.putNumber("Left Drive Voltage", l);
-    SmartDashboard.putNumber("Right Drive Voltage",r);
+    SmartDashboard.putNumber("Left Drive Output Voltage", l);
+    SmartDashboard.putNumber("Right Drive Output Voltage",r);
   }
 
-  private boolean approachChargeStation(boolean backwards) { //Drives forwards until it sees a change in gyro value to indicate it has gotten to the charge station
-    if (Math.abs(m_gyro.getAngle()) > Constants.Auto.STATION_DETECTION_TILT) {
+  private boolean moveStraightWithEncoders(double distance, double targetSpeed) {
+
+    double errL = getPosL() - distance;
+    double errR = getPosR() - distance;
+
+    if (Math.abs(errL) < Constants.Auto.POSITION_ACCURACY && Math.abs(errR) < Constants.Auto.POSITION_ACCURACY) {
       return true;
-    } 
-    double targetSpeed = Constants.Auto.TRAVERSAL_SPEED;
-    if (backwards) {
-      targetSpeed *= -1;
     }
-    tankDriveWithFF(targetSpeed,targetSpeed,encoderL.getVelocity(), encoderR.getVelocity());
+    tankDriveWithFF(
+      targetSpeed, 
+      targetSpeed, 
+      getVelL(), 
+      getVelR()
+    );
     return false;
   }
 
-  private boolean leaveChargeStation(boolean backwards) { //Drives forwards until it thinks it is off the charge station
-    if (Math.abs(m_gyro.getAngle()) < Constants.Auto.STATION_EXIT_DETECTION_TILT) {
-      return true;
-    } 
-    double targetSpeed = Constants.Auto.TRAVERSAL_SPEED;
-    if (backwards) {
-      targetSpeed *= -1;
-    }
-    tankDriveWithFF(targetSpeed,targetSpeed,encoderL.getVelocity(), encoderR.getVelocity());
-    return false;
-  }
-
-  double lastTiltErr = 0;
-  private void engageChargeStation() {
-    //ONLY LOOP THIS ONCE YOU HAVE GOTTEN A true FROM approachChargeStation!
-    double err = m_gyro.getAngle(); //We want gyro angle to be zero!
-    double errSlope = (err - lastTiltErr) / Constants.DT;
-
-    //Tell drivers once we think charge station is level
-    SmartDashboard.putBoolean("Platform Good", Math.abs(err) < Constants.Auto.LEVELING_TOLERANCE);
-
-    double p = err * Constants.Auto.LEVELING_KP + errSlope * Constants.Auto.LEVELING_KD;
-
-    tankDriveWithFF(p, p, encoderL.getVelocity(), encoderR.getVelocity());
-
-    
-  }
-
-  private int autoStepNumber = 0;
-  private void justEngageChargeStation() {
-    switch (autoStepNumber) {
-      case 0: 
-        if (approachChargeStation(false)) {
-          SmartDashboard.putBoolean("Approached Charge Station", true);
-          lastTiltErr = m_gyro.getAngle(); //Setup for engageChargeStation();
-          autoStepNumber++;
-        } 
-        return;
-      case 1:
-        engageChargeStation();
-        return;
+  private int move2FeetExactly(int step) {
+    if (moveStraightWithEncoders(24, Constants.Auto.TRAVERSAL_SPEED)) {
+      return 1;
+    } else {
+      return 0;
     }
   }
 
-  private void leaveCommunityThenEngageChargeStation() {
-    switch (autoStepNumber) {
-      case 0:
-        if (approachChargeStation(false)) {
-          autoStepNumber++;
-        }
-        return;
-      case 1:
-        if (leaveChargeStation(false)) {
-          encoderL.setPosition(0);
-          encoderR.setPosition(0);
-          autoStepNumber++;
-        } 
-        return;
-      case 2:
-        if ((encoderL.getPosition() + encoderR.getPosition()) / 2 >= Constants.Auto.STATION_EXIT_EXTRA_DIST * Constants.Drive.ROTATIONS_PER_INCH) {
-          SmartDashboard.putBoolean("Left Community", true);
-          autoStepNumber++;
-        } else {
-          tankDriveWithFF(Constants.Auto.TRAVERSAL_SPEED, Constants.Auto.TRAVERSAL_SPEED,encoderL.getVelocity(), encoderR.getVelocity() );
-        }
-        return;
-      case 3:
-        if (approachChargeStation(true)) {
-          autoStepNumber++;
-        }
-        return;
-      case 4:
-        engageChargeStation();
-    }
-  }
 
-  private void leaveCommunity() {
+  double autoTimer = 0;
+  private int scoreThenLeaveCommunity(int autoStepNumber) {
     switch(autoStepNumber) {
       case 0:
-        if ((encoderL.getPosition() + encoderR.getPosition()) / 2 >= Constants.Auto.LEAVE_DIST *  Constants.Drive.ROTATIONS_PER_INCH) {
-          SmartDashboard.putBoolean("Left Community", true);
-          autoStepNumber++;
+        if (System.currentTimeMillis() - autoTimer > Constants.Auto.SCORING_DRIVE_TIME * 1000) {
+          autoTimer = System.currentTimeMillis();
+          System.out.println("[auto] Scored Freight");
+          return autoStepNumber + 1;
         } else {
-          tankDriveWithFF(Constants.Auto.TRAVERSAL_SPEED, Constants.Auto.TRAVERSAL_SPEED,encoderL.getVelocity(), encoderR.getVelocity() );
+          tankDriveWithFF(Constants.Auto.TRAVERSAL_SPEED,
+            Constants.Auto.TRAVERSAL_SPEED,
+            getVelL(),
+            getVelR()  
+          );
         }
-        return;
+        break;
       case 1:
-        //We did it!!
-        //Now would be a good time to flash some blinkenlights :)
-        return;
+        return leaveCommunity(autoStepNumber-1);
+      case 2:
+        return leaveCommunity(autoStepNumber-1);
     }
+    return autoStepNumber;
   }
 
+  /* 2 steps! */
+  private int leaveCommunity(int autoStepNumber) {
+    switch(autoStepNumber) {
+      case 0:
+        if (System.currentTimeMillis() - autoTimer > Constants.Auto.LEAVING_DRIVE_TIME * 1000 ) {
+          System.out.println("[auto] Left Community!");
+
+          return autoStepNumber + 1;
+        } 
+        tankDriveWithFF(
+          -Constants.Auto.TRAVERSAL_SPEED, 
+          -Constants.Auto.TRAVERSAL_SPEED,
+          getVelL(), 
+          getVelR()
+        );
+        
+        break;
+      case 1:
+        tankDriveWithFF(-0.03, -0.03, 0, 0); //Slight voltage to not fall down 
+        break;
+    }
+    return autoStepNumber;
+  }
+
+  int masterAutoProgressTracker = 0;
 
   @Override
   public void autonomousInit() {
     m_autoSelected = autoChooser.getSelected();
     System.out.println("Auto selected: " + m_autoSelected.desc);
-    switch (m_autoSelected) {
-      case ENGAGE_STATION: 
-        SmartDashboard.putBoolean("Approached Charge Station", false);
-        break;
-      case LEAVE_THEN_ENGAGE_STATION:
-        SmartDashboard.putBoolean("Left Community", false);
-        break;
-      case LEAVE:
-        SmartDashboard.putBoolean("Left Community", false);
-        break;
-      case NOTHING: break;
-    }
- 
-    autoStepNumber = 0; //If you don't start from square zero, things go very wrong (;
 
-    autoStartTime = System.currentTimeMillis();
+    shiftinator.set(true); //Low gear for auto!
+    grabinator.set(false); //Grabinator is inverted
+
+    autoTimer = System.currentTimeMillis();
+    masterAutoProgressTracker = 0;
+
+    encoderL.setPosition(0);
+    encoderR.setPosition(0);
   }
 
   /** This function is called periodically during autonomous. */
   @Override
   public void autonomousPeriodic() {
-    SmartDashboard.putNumber("Auto Step",autoStepNumber);
-    if (System.currentTimeMillis() - autoStartTime > 15 * 1000) {
-      return; //Autonomous is done; wait for it to switch to teleop
-    }
     switch (m_autoSelected) {
-      case NOTHING: break;
-      case LEAVE: leaveCommunity(); break;
-      case ENGAGE_STATION: justEngageChargeStation();break; 
-      case LEAVE_THEN_ENGAGE_STATION: leaveCommunityThenEngageChargeStation();break;
+      case NOTHING:     break;
+      case LEAVE:       masterAutoProgressTracker = leaveCommunity(masterAutoProgressTracker); break;
+      case SCORE_LEAVE: masterAutoProgressTracker = scoreThenLeaveCommunity(masterAutoProgressTracker); break;
+
       default:   throw new Error("Invalid Opmode!");
     }
   }
@@ -288,8 +284,6 @@ public class Robot extends TimedRobot {
   @Override
   public void teleopInit() {
     System.out.println("Teleop Initialized!");
-    weNeedToZero();
-    m_liftarm_motor.setSelectedSensorPosition(0); //REMOVE AFTER TESTING
   }
 
 
@@ -299,141 +293,33 @@ public class Robot extends TimedRobot {
        + Constants.Drive.KA * targetAcc;
   }
 
-  private double lastArmErr = 0; //Last 
-  private double armI = 0; //Integral accumulator for arm PID
-  private boolean needToZeroArm = false; //Whether or not we need to find the zero point w/ lim switch
-
-  private void weNeedToZero() {
-    needToZeroArm = true;
-    SmartDashboard.putBoolean("Arm Good To Go", !needToZeroArm);
-  }
-
-  private void weNoLongerNeedToZero() {
-    needToZeroArm = false;
-    SmartDashboard.putBoolean("Arm Good To Go", !needToZeroArm);
-  }
-
-
-  private double calcArmPID(double setpoint, double pos) {
-
-    double err = setpoint - pos; //P
-
-    double errSlope = (err - lastArmErr) / Constants.DT; //D
-
-    armI += err * Constants.DT; //I
-
-    double voltage =  Constants.Arm.P * err +  Constants.Arm.I * armI + Constants.Arm.D * errSlope;
-    lastArmErr = err;
-
-
-    return limitAbsWithSign(voltage, Constants.Arm.ARM_V_LIMIT);
-  }
-
-  /** This function is called periodically during operator control. */
-
-  double lastL = 0; //Last position of left control
-  double lastR = 0;
-
-
-  boolean inManualArmMode = false;
-  double armTarget     = Constants.Arm.ANGLE_HOLD;
-  double prevArmTarget = Constants.Arm.ANGLE_HOLD;
-
-  double averageL = 0;
-
   @Override
   public void teleopPeriodic() {
-    if (joyL.getRawButton(3)) {
-      //System.out.println("AAAAA BAD!!"); Debug
-      engageChargeStation();
-    } else {
-      double joyl = joyL.getY();
-      double joyr = joyR.getY();
 
-      if (Math.abs(joyl) < 0.03) joyl = 0;
-      if (Math.abs(joyr) < 0.03) joyr = 0;
+    double joyl = joyL.getY();
+    double joyr = joyR.getY();
 
-      //joyl = (joyl * joyl) * Math.signum(joyl); //Input squaring
-      //joyr = (joyr * joyr) * Math.signum(joyr); //Disabled; it was too much
-  
-      joyl *= Constants.Drive.TELE_SPEED_MULT;
-      joyr *= Constants.Drive.TELE_SPEED_MULT;
+    if (Math.abs(joyl) < 0.06) joyl = 0;
+    if (Math.abs(joyr) < 0.06) joyr = 0;
 
-      averageL += encoderL.getVelocity() * Constants.Drive.ENCODER_COUNTS_TO_FEET;
+    //joyl = (joyl * joyl) * Math.signum(joyl); //Input squaring
+    //joyr = (joyr * joyr) * Math.signum(joyr); //Disabled; it was too much
 
-      
-      tankDriveWithFF(
-        joyl, 
-        joyr, 
-        encoderL.getVelocity() * Constants.Drive.ENCODER_COUNTS_TO_FEET, 
-        encoderR.getVelocity() * Constants.Drive.ENCODER_COUNTS_TO_FEET
-      );
-    }
+    joyl *= Constants.Drive.TELE_SPEED_MULT;
+    joyr *= Constants.Drive.TELE_SPEED_MULT;
 
+    
+    tankDriveWithFF(
+      joyl, 
+      joyr, 
+      getVelL(),
+      getVelR()
+    );
+    
     //Solonoids
     shiftinator.set(!joyR.getRawButton(2));
     if (joyOperator.getRawButton(LogitechF130Controller.kButtonX)) grabinator.set(true);
     if (joyOperator.getRawButton(LogitechF130Controller.kButtonY)) grabinator.set(false);
-
-
-    //Arm Lifting!!
-    /* 
-    if (needToZeroArm) {
-      //Arm Zeroing Ritual: Move backwards until we hit the limit switch, then stop and zero the encoder.
-      if (getArmZeroSwitchHit()) {
-        m_liftarm_motor.setSelectedSensorPosition(0); 
-        m_liftarm_motor.set(0);
-        
-        weNoLongerNeedToZero();
-        armTarget = Constants.Arm.ANGLE_LO;
-      } else {
-        m_liftarm_motor.setVoltage(Constants.Arm.ZEROING_VOLTAGE);
-      }
-    } else {
-
-      //Once arm is zeroed, do things
-
-      //Arm control works like this:
-      //DPAD-UP will set the target level for the arm to be the HI position
-      //DPAD-Right or DPAD Left will set the target position of the arm to the MID position
-      //DPAD-Down will set the target pos to the HOLD position.
-
-      //This is fine, but what if you want to manually adjust the position of the arm?
-      //While holding the Left Bumper, The Left Stick (Up-And-Down) lets you send the arm up and down.
-      //When you release the Left Bumper it will return to the last set target position.
-
-      //Finally, X will cause the robot to try to GRAB a cube or cone, and
-      // Y will try to DROP a cube or cone. Keep in mind the Pnumatics are not super fast!
-
-      
-      int dpadAngle = joyOperator.getPOV(0);
-      switch (dpadAngle) {
-        case 0:   armTarget = Constants.Arm.ANGLE_HI;   break;
-        case 90:  armTarget = Constants.Arm.ANGLE_MID;  break;
-        case 270: armTarget = Constants.Arm.ANGLE_MID;  break;
-        case 180: armTarget = Constants.Arm.ANGLE_LO; break;//Constants.Arm.ANGLE_HOLD; break;
-      }
-
-      if (joyOperator.getRawButton(LogitechF130Controller.kButtonLB)) {
-        if (!inManualArmMode) {
-          inManualArmMode = true;
-          prevArmTarget = armTarget;
-        }
-        armTarget += joyOperator.getRawAxis(LogitechF130Controller.kAxisLeftStickY);
-      } else if (inManualArmMode) {
-        armTarget = prevArmTarget;
-        inManualArmMode = false;
-      }
-
-      
-      //Automatic control
-      double armV = calcArmPID(armTarget, getArmAngle());
-      //double armV = joyOperator.getRawAxis(LogitechF130Controller.kAxisLeftStickY) * 5;
-      SmartDashboard.putNumber("Arm Voltage", armV);
-      m_liftarm_motor.setVoltage(armV);
-
-    }
-    */
     
   }
   /** This function is called once when the robot is disabled. */
@@ -446,15 +332,17 @@ public class Robot extends TimedRobot {
   @Override
   public void disabledPeriodic() {}
 
+  private int testStep = 0;
   @Override
   public void testInit() {
     System.out.println("Test mode Init!");
-    teleopInit();
+    
   }
 
   @Override
   public void testPeriodic() {
-    teleopPeriodic();
+    //teleopPeriodic();
+    testStep = move2FeetExactly(testStep);
   }
 
   /** This function is called once when the robot is first started up. */

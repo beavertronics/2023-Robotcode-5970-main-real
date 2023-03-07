@@ -3,18 +3,18 @@ package frc.robot;
 public final class Constants {
     // UNITS           = Name (Abbr)
     //-----------------|-------------
-    // LENGTH/DISTANCE = Feet (f)
-    // VELOCITY/SPEED  = Feet per Second (f/s)
-    // ACCELERATION    = Feet per Second per Second (f/s/s)
-    // ANGLE           = Degrees or Rotations- will be labeled
-    // ELECTRIC POWER  = Volts (v)
+    // DISTANCE IS IN INCHES 
+
 
     public static final double DT = 0.02;
 
     public final class Drive {
-        public static final double KS = 0.24571; //Voltage required to overcome static friction
-        public static final double KV = 0.57682; //Voltage required to stay moving at 1 f/s
-        public static final double KA = 0.1;//0.24682; //Voltage required to accelerate at 1 f/s/s
+        public static final double P  = 20;
+        public static final double D = 0;
+        
+        public static final double KS = 0.24571 / 12; //Voltage required to overcome static friction
+        public static final double KV = 0.57682 / 12; //Voltage required to stay moving at 1 f/s
+        public static final double KA = 0.07    / 12;//0.24682; //Voltage required to accelerate at 1 f/s/s
 
         public static final float MAX_ACC = 2; //Maximum acceleration
         public static final float DRIVE_V_LIMIT = 12; //Voltage limit
@@ -22,31 +22,34 @@ public final class Constants {
         //All of the above apply to BOTH teleop AND AUTONOMOUS!
         //TELE_SPEED_MULT only applies to teleop.
 
-        public static final double TELE_SPEED_MULT = 7; //Fast!
-        //The speed range of the bot should be from 0f/s to TELE_SPEED_MULT f/s
+        public static final double TELE_SPEED_MULT = 7 * 12; //Fast!
+        //The speed range of the bot should be from 0f/s to TELE_SPEED_MULT in/s
         // But problems...
 
-        public static final double LOW_GEAR = 1.0/24.0;
-        public static final double WHEEL_DIA = (7.65 / 12.0) * Math.PI;
-        public static final double ENCODER_COUNTS_TO_FEET = LOW_GEAR * WHEEL_DIA;
+        public static final double LOW_GEAR  = 1.0/24.0;
+        public static final double HIGH_GEAR = 15.0/136.0;
+        public static final double WHEEL_DIA = 7.65 * Math.PI;
+        public static final double LOW_GEAR_REVS_TO_INCHES  = LOW_GEAR  * WHEEL_DIA;
+        public static final double HIGH_GEAR_REVS_TO_INCHES = HIGH_GEAR * WHEEL_DIA;
 
-        public static final double ROTATIONS_PER_INCH = 12.0/ENCODER_COUNTS_TO_FEET; //IN LOW GEAR ONLY!!
+        public static final double INCHES_TO_LOW_GEAR_REVS = 1/LOW_GEAR_REVS_TO_INCHES;
+        public static final double INCHES_TO_HIGH_GEAR_REVS = 1/HIGH_GEAR_REVS_TO_INCHES;
     }
 
     public final class Arm {
 
-        public static final double ENCODER_COUNTS_PER_REV = 2048.0; //
-        public static final double RATIO = 1.0 / 400.0 ;//Gear ratio from falcon to arm; how many falcon rotations per arm rotation
+        //public static final double ENCODER_COUNTS_PER_REV = 2048.0; //
+        //public static final double RATIO = 1.0 / 400.0 ;//Gear ratio from falcon to arm; how many falcon rotations per arm rotation
 
-        public static final double ENCODER_COUNTS_PER_ARM_REV = ENCODER_COUNTS_PER_REV / RATIO;
-        public static final double ENCODER_COUNTS_TO_ARM_DEGS = 1.0 / (ENCODER_COUNTS_PER_ARM_REV / 360.0);
+        //public static final double ENCODER_COUNTS_PER_ARM_REV = ENCODER_COUNTS_PER_REV / RATIO;
+        //public static final double ENCODER_COUNTS_TO_ARM_DEGS = 1.0 / (ENCODER_COUNTS_PER_ARM_REV / 360.0);
 
-        public static final double ARM_V_LIMIT = 10; //Limit output of arm PID via clamping
+        //public static final double ARM_V_LIMIT = 10; //Limit output of arm PID via clamping
 
-        public static final double P = 1.5;
-        public static final float I = 0;
-        public static final float D = 0;
-        public static final float ZEROING_VOLTAGE = -4; //Voltage for sending arm to start
+       // public static final double P = 1;
+        //public static final float I = 0;
+        //public static final float D = 0;
+        //public static final float ZEROING_VOLTAGE = -4; //Voltage for sending arm to start
 
         //Reasonable estimates from CAD
         //Need to be tuned
@@ -58,28 +61,17 @@ public final class Constants {
 
     }
     public final class Auto {
-        public static final double STATION_DETECTION_TILT = 10; 
-        //How far the robot has to tilt before it can assume it's at least partially on the charge station
-
-        public static final double STATION_EXIT_DETECTION_TILT = 1;
-        //How close to level the robot has to be before it can assume it's mostly off the charge station
-
-        public static final double STATION_EXIT_EXTRA_DIST = 6;
-        //How many extra inches to travel after hitting STATION_EXIT_DETECTION_TILT to be fully off of the station and out of the community
 
         public static final double LEVELING_KP = 1;
         public static final double LEVELING_KD = 0;
 
-        public static final double LEAVE_DIST = 5 * 12;
-        //How many inches to travel to fully leave the COMMUNITY.
+        public static final double POSITION_ACCURACY = 0.25; //Quarter inch
 
-        public static final double TRAVERSAL_SPEED = 3.5; //Auto will try to run at 3 feet per second.
-         //Speed while leveling the charge station is automagically adjusted by PD controller
 
-        public static final double LEVELING_TOLERANCE = 0.5; //How close the robot will try to get to perfectly level
+        public static final double TRAVERSAL_SPEED = 3; //Auto will try to run at 3 inches per second??
 
-        //The tolerance on drive station counting as level is about 2 + 1/2 degrees
-        //Gyro accuracy is about 0.75 of a degree
+        public static final double SCORING_DRIVE_TIME = 0.7;
+        public static final double LEAVING_DRIVE_TIME = 1.5;
     }
 
     public final class LogitechF130Controller {
