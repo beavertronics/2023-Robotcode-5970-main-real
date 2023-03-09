@@ -33,3 +33,6 @@ Normally, this would be the end of it- You'd be able to write code from here. Bu
 ## About the Code
 
 Currently, it's quite unstable and is rapidly changing- I'll make a proper description once we get to offseason.
+
+The main branch of this repo is the code that will be used in comps- I have a branch for messing around with the
+codebase and trying out major restructuring to ensure I don't mess up the comps code.
