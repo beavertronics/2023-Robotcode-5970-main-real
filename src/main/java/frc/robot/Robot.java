@@ -170,10 +170,12 @@ public class Robot extends TimedRobot {
     SmartDashboard.putNumber("Left Drive Target Vel", targetVelL);
     SmartDashboard.putNumber("Right Drive Target Vel", targetVelR);
 
-    double targetAccelerationL = targetVelL - currentVelL;
+    double targetAccelerationL = (targetVelL - currentVelL) / 1;
+    //It will try to accelerate to hit targetVel in one second (dividing by Constants.DT would make it try to accelerate in one control frame)
+
     //double errSlopeL = (errL - lastDriveErrL) / Constants.DT;
 
-    double targetAccelerationR = targetVelR - currentVelR;
+    double targetAccelerationR = (targetVelR - currentVelR) / 1;
     //double errSlopeR = (errR - lastDriveErrR) / Constants.DT
 
     //Tank Drive, but using fancy feedforwards stuff
@@ -197,8 +199,8 @@ public class Robot extends TimedRobot {
       return true;
     }
     tankDriveWithFF(
-      targetSpeed, 
-      targetSpeed, 
+      -targetSpeed, 
+      -targetSpeed, 
       getVelL(), 
       getVelR()
     );
@@ -256,7 +258,7 @@ public class Robot extends TimedRobot {
         
         break;
       case 1:
-        tankDriveWithFF(-0.03, -0.03, 0, 0); //Slight voltage to not fall down 
+        tankDriveWithFF(-Constants.Auto.CHARGE_STATION_HOLD_VOLTAGE, -Constants.Auto.CHARGE_STATION_HOLD_VOLTAGE, 0, 0); //Slight voltage to not fall down 
         break;
     }
     return autoStepNumber;
@@ -353,6 +355,7 @@ public class Robot extends TimedRobot {
   @Override
   public void testPeriodic() {
     //teleopPeriodic();
+    System.out.println(testStep);
     testStep = move2FeetExactly(testStep);
   }
 

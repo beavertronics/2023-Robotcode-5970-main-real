@@ -73,9 +73,10 @@ public final class Constants {
         public static final double LEVELING_KD = 0;
 
         public static final double POSITION_ACCURACY = 0.25; //Quarter inch
+        public static final double CHARGE_STATION_HOLD_VOLTAGE = 0.03; //Give motors a slight power forwards to stay on ramp when tilted
 
 
-        public static final double TRAVERSAL_SPEED = 3; //Auto will try to run at 3 inches per second??
+        public static final double TRAVERSAL_SPEED = 3 * 12; //Auto will try to run at 3 inches per second??
 
         public static final double SCORING_DRIVE_TIME = 0.7;
         public static final double LEAVING_DRIVE_TIME = 1.5;
