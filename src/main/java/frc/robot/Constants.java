@@ -70,20 +70,32 @@ public final class Constants {
     }
     public final class Auto {
 
-        public static final double LEVELING_KP = 1;
-        public static final double LEVELING_KD = 0;
+        public static final double GYRO_ANGLE_ADJUST = 0; 
+        //adjust GYRO_ANGLE_ADJUST so that Gyro pitch + GYRO_ANGLE_ADJUST is zero when gyro is level
+
+        public static final double LEVELING_P = 1;
+        public static final double LEVELING_I = 0;
+        public static final double LEVELING_D = 0;
+
+        public static final double LEVELING_ACCURACY = 1; //Will not stop until it is within one degree of level
 
         public static final double POSITION_ACCURACY = 0.25; //Quarter inch
 
 
-        public static final double TRAVERSAL_SPEED = 3; //Auto will try to run at 3 inches per second??
+        public static final double TRAVERSAL_SPEED = 3; //Auto will try to run at 3 inches?? per second??
+        public static final double STAION_APPROACH_SPEED = TRAVERSAL_SPEED/2; //Auto will go slowly when approaching charge station
 
         public static final double SCORING_DRIVE_TIME = 0.7;
         public static final double LEAVING_DRIVE_TIME = 1.5;
+
+        public static final double LEVELING1_APPROACH_TIME = 1; //How long to get onto platform
+        public static final double LEVELING2_EXIT_TIME = 1; //How long will the robot take to drive all the way over the charge station and leave the community for mobility points
+        public static final double LEVELING2_REVERSE_APPROACH_TIME = 1; //How long does the robot need to drive backwards after leaving the community to get partially back on the charge station
     }
 
     public final class LogitechF130Controller {
         //Largely borrowed from http://controls.coderedrobotics.com/programminglessons/4.html
+        //TODO: Refactor this into a properly integrated class, or borrow someone else's properly integrated F130 gamepad class.
         //Gamepad axes (All vary from -1 to 1)
         public static final int kAxisLeftStickX = 0;
         public static final int kAxisLeftStickY = 1;
