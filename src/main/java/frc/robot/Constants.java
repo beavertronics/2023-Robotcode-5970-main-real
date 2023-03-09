@@ -35,9 +35,10 @@ public final class Constants {
 
         public static final double LOW_GEAR  = 1.0/24.0;
         public static final double HIGH_GEAR = 15.0/136.0;
-        public static final double WHEEL_DIA = 7.65 * Math.PI;
-        public static final double LOW_GEAR_REVS_TO_INCHES  = LOW_GEAR  * WHEEL_DIA;
-        public static final double HIGH_GEAR_REVS_TO_INCHES = HIGH_GEAR * WHEEL_DIA;
+        public static final double WHEEL_DIA = 7.650;
+        public static final double WHEEL_CIRC = WHEEL_DIA * Math.PI;
+        public static final double LOW_GEAR_REVS_TO_INCHES  = LOW_GEAR  * WHEEL_CIRC;
+        public static final double HIGH_GEAR_REVS_TO_INCHES = HIGH_GEAR * WHEEL_CIRC;
 
         public static final double INCHES_TO_LOW_GEAR_REVS = 1/LOW_GEAR_REVS_TO_INCHES;
         public static final double INCHES_TO_HIGH_GEAR_REVS = 1/HIGH_GEAR_REVS_TO_INCHES;

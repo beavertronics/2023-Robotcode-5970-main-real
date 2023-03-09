@@ -135,30 +135,30 @@ public class Robot extends TimedRobot {
 
   private double getPosL() {
     if (shiftinator.get()) { //Low Gear
-      return encoderL.getPosition() * Constants.Drive.INCHES_TO_LOW_GEAR_REVS;
+      return encoderL.getPosition() * Constants.Drive.LOW_GEAR_REVS_TO_INCHES;
     } else { //High Gear
-      return encoderL.getPosition() * Constants.Drive.INCHES_TO_HIGH_GEAR_REVS;
+      return encoderL.getPosition() * Constants.Drive.HIGH_GEAR_REVS_TO_INCHES;
     }
   }
   private double getPosR() {
     if (shiftinator.get()) { //Low Gear
-      return encoderR.getPosition() * Constants.Drive.INCHES_TO_LOW_GEAR_REVS;
+      return encoderR.getPosition() * Constants.Drive.LOW_GEAR_REVS_TO_INCHES;
     } else { //High Gear
-      return encoderR.getPosition() * Constants.Drive.INCHES_TO_HIGH_GEAR_REVS;
+      return encoderR.getPosition() * Constants.Drive.HIGH_GEAR_REVS_TO_INCHES;
     }
   }
   private double getVelL() {
     if (shiftinator.get()) { //Low Gear
-      return encoderL.getVelocity() * Constants.Drive.INCHES_TO_LOW_GEAR_REVS;
+      return encoderL.getVelocity() * Constants.Drive.LOW_GEAR_REVS_TO_INCHES;
     } else { //High Gear
-      return encoderL.getVelocity() * Constants.Drive.INCHES_TO_HIGH_GEAR_REVS;
+      return encoderL.getVelocity() * Constants.Drive.HIGH_GEAR_REVS_TO_INCHES;
     }
   }
   private double getVelR() {
     if (shiftinator.get()) { //Low Gear
-      return encoderR.getVelocity() * Constants.Drive.INCHES_TO_LOW_GEAR_REVS;
+      return encoderR.getVelocity() * Constants.Drive.LOW_GEAR_REVS_TO_INCHES;
     } else { //High Gear
-      return encoderR.getVelocity() * Constants.Drive.INCHES_TO_HIGH_GEAR_REVS;
+      return encoderR.getVelocity() * Constants.Drive.HIGH_GEAR_REVS_TO_INCHES;
     }
   }
 
@@ -193,10 +193,20 @@ public class Robot extends TimedRobot {
     double errL = getPosL() - distance;
     double errR = getPosR() - distance;
 
-    if (Math.abs(errL) < Constants.Auto.POSITION_ACCURACY && Math.abs(errR) < Constants.Auto.POSITION_ACCURACY) {
+    double targetSpeedL = targetSpeed;
+    double targetSpeedR = targetSpeed;
+
+    if (Math.abs(errL) < Constants.Auto.POSITION_ACCURACY) {
+      targetSpeedL = 0;
+    }
+    if (Math.abs(errR) < Constants.Auto.POSITION_ACCURACY) {
+      targetSpeedR = 0;
+    }
+
+    if (targetSpeedL == 0 && targetSpeedR == 0) {
       return true;
     }
-    tankDriveWithFF(
+    tankDriveWithFF( //Warning, sharp accelerations!
       targetSpeed, 
       targetSpeed, 
       getVelL(), 
