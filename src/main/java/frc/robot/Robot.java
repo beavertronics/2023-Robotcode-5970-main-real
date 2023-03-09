@@ -101,6 +101,7 @@ public class Robot extends TimedRobot {
 
   private final Solenoid shiftinator = new Solenoid(PneumaticsModuleType.CTREPCM, 1);
   private final Solenoid grabinator  = new Solenoid(PneumaticsModuleType.CTREPCM, 0);
+  private final Solenoid liftinator  = new Solenoid(PneumaticsModuleType.CTREPCM, 2);
 
   //================== DRIVER STATION HARDWARE (controllers) ==================//
 
@@ -363,6 +364,7 @@ public class Robot extends TimedRobot {
 
     shiftinator.set(true); //Low gear for auto!
     grabinator.set(false); //Grabinator is inverted
+    liftinator.set(false);
 
     autoTimer = System.currentTimeMillis();
     masterAutoProgressTracker = 0;
@@ -432,6 +434,9 @@ public class Robot extends TimedRobot {
     if (joyOperator.getRawButton(LogitechF130Controller.kButtonX)) grabinator.set(true);
     if (joyOperator.getRawButton(LogitechF130Controller.kButtonY)) grabinator.set(false);
     
+    if (joyOperator.getRawButton(LogitechF130Controller.kButtonA)) liftinator.set(true);
+    if (joyOperator.getRawButton(LogitechF130Controller.kButtonB)) liftinator.set(false);
+
   }
   /** This function is called once when the robot is disabled. */
   @Override
