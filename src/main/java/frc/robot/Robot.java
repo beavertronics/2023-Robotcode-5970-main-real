@@ -29,8 +29,9 @@ import edu.wpi.first.wpilibj.PneumaticsModuleType;
 //import edu.wpi.first.wpilibj.ADXRS450_Gyro; RIP little gyro
 //import edu.wpi.first.wpilibj.SPI; 
 
-//import com.kauailabs.navx.frc.AHRS;
+import com.kauailabs.navx.frc.AHRS;
 //import edu.wpi.first.wpilibj.SerialPort.Port;
+import edu.wpi.first.wpilibj.SPI.Port;
 
 //import edu.wpi.first.cameraserver.CameraServer; //Not needed because jetson stuff is fancy
 
@@ -98,6 +99,7 @@ public class Robot extends TimedRobot {
 
   //private final ADXRS450_Gyro m_gyro = new ADXRS450_Gyro(SPI.Port.kOnboardCS0);
   //private final AHRS navXIMU = new AHRS(Port.kUSB2); //USB2 is BOTTOM USB PORT!!!
+  private final AHRS navXIMU = new AHRS(Port.kMXP); //MXP connector in middle of rio
 
   private final Solenoid shiftinator = new Solenoid(PneumaticsModuleType.CTREPCM, 1);
   private final Solenoid grabinator  = new Solenoid(PneumaticsModuleType.CTREPCM, 0);
@@ -117,8 +119,9 @@ public class Robot extends TimedRobot {
       NOTHING ("Just sit there");
   
       public String desc;
+      
       private Autos(String desc) {
-        this.desc= desc;
+          this.desc= desc;
       }
     }
     private final SendableChooser<Autos> autoChooser = new SendableChooser<>();
@@ -128,6 +131,7 @@ public class Robot extends TimedRobot {
   public void robotInit() {
 
     autoChooser.setDefaultOption(Autos.NOTHING.desc, Autos.NOTHING);
+    
     for (Autos auto : Autos.values()) {
       autoChooser.addOption(auto.desc, auto);
     }
@@ -147,9 +151,9 @@ public class Robot extends TimedRobot {
   /*Called every 20 ms, no matter the mode.*/
   @Override
   public void robotPeriodic() {
-    //SmartDashboard.putNumber("NAVX Pitch", navXIMU.getPitch());
-    //SmartDashboard.putNumber("NAVX Roll", navXIMU.getRoll());
-    //SmartDashboard.putNumber("NAVX Yaw(Heading)", navXIMU.getYaw());
+    SmartDashboard.putNumber("NAVX Pitch", navXIMU.getPitch());
+    SmartDashboard.putNumber("NAVX Roll", navXIMU.getRoll());
+    SmartDashboard.putNumber("NAVX Yaw(Heading)", navXIMU.getYaw());
   }
 
   /**
@@ -194,9 +198,9 @@ public class Robot extends TimedRobot {
     }
   }
 
-  /*
+  
   private double getCorrectedPitch() {
-    return navXIMU.getPitch() + Constants.Auto.GYRO_ANGLE_ADJUST
+    return navXIMU.getPitch() + Constants.Auto.GYRO_ANGLE_ADJUST;
   }
 
   //TODO: Stop repeating the same PID code everwhere!
@@ -223,7 +227,6 @@ public class Robot extends TimedRobot {
     return 0;
   }
 
-  */
 
   private void tankDriveWithFF(double targetVelL, double targetVelR, double currentVelL, double currentVelR) {
 
@@ -315,12 +318,13 @@ public class Robot extends TimedRobot {
           autoTimer = System.currentTimeMillis();
           System.out.println("[auto] Scored Freight");
           return autoStepNumber + 1;
-        } else {
+        } 
+        else {
           tankDriveWithFF(Constants.Auto.TRAVERSAL_SPEED,
-            Constants.Auto.TRAVERSAL_SPEED,
-            getVelL(),
-            getVelR()  
-          );
+              Constants.Auto.TRAVERSAL_SPEED,
+              getVelL(),
+              getVelR()  
+            );
         }
         break;
       case 1:
