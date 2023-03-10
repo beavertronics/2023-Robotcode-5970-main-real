@@ -29,7 +29,8 @@ public final class Constants {
         //All of the above apply to BOTH teleop AND AUTONOMOUS!
         //TELE_SPEED_MULT only applies to teleop.
 
-        public static final double TELE_SPEED_MULT = 7 * 12; //Fast!
+        public static final double TELE_NORM_SPEED_MULT = 6 * 12; //Fast!
+        public static final double TELE_FAST_SPEED_MULT = 12 * 12; //Really fast!!
         //The speed range of the bot should be from 0f/s to TELE_SPEED_MULT in/s
         // But problems...
 
@@ -83,11 +84,16 @@ public final class Constants {
         public static final double CHARGE_STATION_HOLD_VOLTAGE = 0.03; //Give motors a slight power forwards to stay on ramp when tilted
 
 
-        public static final double TRAVERSAL_SPEED = 3; //Auto will try to run at 3 inches?? per second??
+        public static final double TRAVERSAL_SPEED = 3 * 12; //Auto will try to run at 3 inches?? per second??
         public static final double STAION_APPROACH_SPEED = TRAVERSAL_SPEED/2; //Auto will go slowly when approaching charge station
 
-        public static final double SCORING_DRIVE_TIME = 0.7;
-        public static final double LEAVING_DRIVE_TIME = 1.5;
+
+        //DO NOT CHANGE!!!
+        public static final double SCORING_DRIVE_TIME = 0.4; //DO NOT CHANGE!!\
+        //DO NOT CHANGE!!!!@!
+
+
+        public static final double LEAVING_DRIVE_TIME = 4; //2.75
 
         public static final double LEVELING1_APPROACH_TIME = 1; //How long to get onto platform
         public static final double LEVELING2_EXIT_TIME = 1; //How long will the robot take to drive all the way over the charge station and leave the community for mobility points

@@ -324,9 +324,9 @@ public class Robot extends TimedRobot {
         }
         break;
       case 1:
-        return leaveCommunity(autoStepNumber-1);
+        return leaveCommunity(autoStepNumber-1) + 1;
       case 2:
-        return leaveCommunity(autoStepNumber-1);
+        return leaveCommunity(autoStepNumber-1) + 1;
     }
     return autoStepNumber;
   }
@@ -338,7 +338,7 @@ public class Robot extends TimedRobot {
         if (System.currentTimeMillis() - autoTimer > Constants.Auto.LEAVING_DRIVE_TIME * 1000 ) {
           System.out.println("[auto] Left Community!");
 
-          return autoStepNumber + 1;
+          return 1;
         } 
         tankDriveWithFF(
           -Constants.Auto.TRAVERSAL_SPEED, 
@@ -346,11 +346,11 @@ public class Robot extends TimedRobot {
           getVelL(), 
           getVelR()
         );
-        
-        break;
+        return 0;
       case 1:
-        tankDriveWithFF(-Constants.Auto.CHARGE_STATION_HOLD_VOLTAGE, -Constants.Auto.CHARGE_STATION_HOLD_VOLTAGE, 0, 0); //Slight voltage to not fall down 
-        break;
+        
+        //tankDriveWithFF(-Constants.Auto.CHARGE_STATION_HOLD_VOLTAGE, -Constants.Auto.CHARGE_STATION_HOLD_VOLTAGE, 0, 0); //Slight voltage to not fall down 
+        return 1;
     }
     return autoStepNumber;
   }
@@ -362,8 +362,8 @@ public class Robot extends TimedRobot {
     m_autoSelected = autoChooser.getSelected();
     System.out.println("Auto selected: " + m_autoSelected.desc);
 
-    shiftinator.set(true); //Low gear for auto!
-    grabinator.set(false); //Grabinator is inverted
+    shiftinator.set(false); //Low gear for auto!
+    grabinator.set(true); //Grabinator is inverted
     liftinator.set(false);
 
     autoTimer = System.currentTimeMillis();
@@ -406,6 +406,7 @@ public class Robot extends TimedRobot {
     double joyl = joyL.getY();
     double joyr = joyR.getY();
 
+
     if (Math.abs(joyl) < 0.06) joyl = 0;
     if (Math.abs(joyr) < 0.06) joyr = 0;
 
@@ -414,8 +415,14 @@ public class Robot extends TimedRobot {
     joyr = (joyr * joyr) * Math.signum(joyr);
     Disabled; it was too much */
 
-    joyl *= Constants.Drive.TELE_SPEED_MULT;
-    joyr *= Constants.Drive.TELE_SPEED_MULT;
+    if (joyL.getTrigger()) {
+      joyl *= Constants.Drive.TELE_FAST_SPEED_MULT;
+      joyr *= Constants.Drive.TELE_FAST_SPEED_MULT;
+    } else {
+
+      joyl *= Constants.Drive.TELE_NORM_SPEED_MULT;
+      joyr *= Constants.Drive.TELE_NORM_SPEED_MULT;
+    }
 
     
     tankDriveWithFF(
@@ -428,14 +435,14 @@ public class Robot extends TimedRobot {
     //Solonoids
 
     //==============SHIFTING!!
-    shiftinator.set(!joyR.getRawButton(2));
+    shiftinator.set(joyR.getRawButton(2));
 
     //==============GRABBY CLAW!!!!
     if (joyOperator.getRawButton(LogitechF130Controller.kButtonX)) grabinator.set(true);
     if (joyOperator.getRawButton(LogitechF130Controller.kButtonY)) grabinator.set(false);
     
-    if (joyOperator.getRawButton(LogitechF130Controller.kButtonA)) liftinator.set(true);
-    if (joyOperator.getRawButton(LogitechF130Controller.kButtonB)) liftinator.set(false);
+    if (joyOperator.getRawButtonPressed(LogitechF130Controller.kButtonA)) liftinator.toggle();
+
 
   }
   /** This function is called once when the robot is disabled. */
