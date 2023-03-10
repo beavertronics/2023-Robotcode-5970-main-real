@@ -435,7 +435,7 @@ public class Robot extends TimedRobot {
     //Solonoids
 
     //==============SHIFTING!!
-    shiftinator.set(joyR.getRawButton(2));
+    shiftinator.set(!joyR.getRawButton(2));
 
     //==============GRABBY CLAW!!!!
     if (joyOperator.getRawButton(LogitechF130Controller.kButtonX)) grabinator.set(true);
