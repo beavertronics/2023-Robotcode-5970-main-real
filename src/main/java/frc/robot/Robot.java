@@ -271,6 +271,36 @@ public class Robot extends TimedRobot {
     );
     return false;
   }
+   
+   
+   
+     private boolean TurnWithEncoders(double distance, double targetSpeed) {
+
+    double errL = getPosL() - distance;
+    double errR = getPosR() + distance;
+
+    double targetSpeedL = targetSpeed;
+    double targetSpeedR = -targetSpeed;
+
+    if (Math.abs(errL) < Constants.Auto.POSITION_ACCURACY) {
+      targetSpeedL = 0;
+    }
+    if (Math.abs(errR) < Constants.Auto.POSITION_ACCURACY) {
+      targetSpeedR = 0;
+    }
+
+    if (targetSpeedL == 0 && targetSpeedR == 0) {
+      return true;
+    }
+    tankDriveWithFF( //Warning, sharp accelerations!
+      -targetSpeed, 
+      targetSpeed, 
+      getVelL(), 
+      getVelR()
+    );
+    return false;
+  }
+   
 
   private int move2FeetExactly(int step) {
     if (moveStraightWithEncoders(24, Constants.Auto.TRAVERSAL_SPEED)) {
