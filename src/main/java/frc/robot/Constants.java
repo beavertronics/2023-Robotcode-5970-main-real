@@ -30,7 +30,7 @@ public final class Constants {
         //TELE_SPEED_MULT only applies to teleop.
 
         public static final double TELE_NORM_SPEED_MULT = 6 * 12; //Fast!
-        public static final double TELE_FAST_SPEED_MULT = 12 * 12; //Really fast!!
+        public static final double TELE_FAST_SPEED_MULT = 20 * 12; //Really fast!!
         //The speed range of the bot should be from 0f/s to TELE_SPEED_MULT in/s
         // But problems...
 
@@ -71,16 +71,20 @@ public final class Constants {
     }
     public final class Auto {
 
-        public static final double GYRO_ANGLE_ADJUST = 0; 
+        public static final double GYRO_ANGLE_ADJUST = 30.5; //TODO: Only somewhat accurate
         //adjust GYRO_ANGLE_ADJUST so that Gyro pitch + GYRO_ANGLE_ADJUST is zero when gyro is level
 
-        public static final double LEVELING_P = 1;
+        public static final double LEVELING_P = 0.7; //0.7 volts per degree
         public static final double LEVELING_I = 0;
         public static final double LEVELING_D = 0;
 
-        public static final double LEVELING_ACCURACY = 1; //Will not stop until it is within one degree of level
+        public static final double LEVELING_ACCURACY = 2
+        ; //Will not stop until it is within one degree of level
 
-        public static final double POSITION_ACCURACY = 0.25; //Quarter inch
+        public static final double POSITION_ACCURACY = 0.25; //Q
+        
+        
+        //-arter inch
         public static final double CHARGE_STATION_HOLD_VOLTAGE = 0.03; //Give motors a slight power forwards to stay on ramp when tilted
 
 
@@ -95,9 +99,11 @@ public final class Constants {
 
         public static final double LEAVING_DRIVE_TIME = 4; //2.75
 
+        public static final double LEAVING_OVER_STATION_TIME = 4; //TODO: Tune
+
         public static final double LEVELING1_APPROACH_TIME = 1; //How long to get onto platform
-        public static final double LEVELING2_EXIT_TIME = 1; //How long will the robot take to drive all the way over the charge station and leave the community for mobility points
-        public static final double LEVELING2_REVERSE_APPROACH_TIME = 1; //How long does the robot need to drive backwards after leaving the community to get partially back on the charge station
+        //public static final double LEVELING2_EXIT_TIME = 1; //How long will the robot take to drive all the way over the charge station and leave the community for mobility points
+        public static final double LEVELING2_REVERSE_APPROACH_TIME = 0.7; //How long does the robot need to drive backwards after leaving the community to get partially back on the charge station
     }
 
     public final class LogitechF130Controller {

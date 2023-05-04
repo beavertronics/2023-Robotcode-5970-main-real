@@ -29,15 +29,17 @@ import edu.wpi.first.wpilibj.PneumaticsModuleType;
 //import edu.wpi.first.wpilibj.ADXRS450_Gyro; RIP little gyro
 //import edu.wpi.first.wpilibj.SPI; 
 
-//import com.kauailabs.navx.frc.AHRS;
+import com.kauailabs.navx.frc.AHRS;
 //import edu.wpi.first.wpilibj.SerialPort.Port;
+
+import edu.wpi.first.wpilibj.SPI.Port;
 
 //import edu.wpi.first.cameraserver.CameraServer; //Not needed because jetson stuff is fancy
 
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.Joystick;
-//import edu.wpi.first.wpilibj.XboxController; RIP Xbox controller
+import edu.wpi.first.wpilibj.XboxController; //UNRIP Xbox controller
 
 //=================Large TODOs:
 //TODO: Refactor to use a command based architechture (Will make auto programming 10 times easier, but will take a long time)
@@ -98,14 +100,15 @@ public class Robot extends TimedRobot {
 
   //private final ADXRS450_Gyro m_gyro = new ADXRS450_Gyro(SPI.Port.kOnboardCS0);
   //private final AHRS navXIMU = new AHRS(Port.kUSB2); //USB2 is BOTTOM USB PORT!!!
+  private final AHRS navXIMU = new AHRS(Port.kMXP);
 
   private final Solenoid shiftinator = new Solenoid(PneumaticsModuleType.CTREPCM, 1);
-  private final Solenoid grabinator  = new Solenoid(PneumaticsModuleType.CTREPCM, 0);
-  private final Solenoid liftinator  = new Solenoid(PneumaticsModuleType.CTREPCM, 2);
+  //private final Solenoid grabinator  = new Solenoid(PneumaticsModuleType.CTREPCM, 0);
+  //private final Solenoid liftinator  = new Solenoid(PneumaticsModuleType.CTREPCM, 2);
 
   //================== DRIVER STATION HARDWARE (controllers) ==================//
 
-  private final Joystick joyOperator= new Joystick(0);
+  private final XboxController joyOperator = new XboxController(0);
   private final Joystick joyL = new Joystick(1);
   private final Joystick joyR = new Joystick(2);
 
@@ -114,6 +117,7 @@ public class Robot extends TimedRobot {
   enum Autos {
       LEAVE ("Just drive forwards to leave the Community"),
       SCORE_LEAVE ("Drive backwards to score, then drive forwards to leave the community."),
+      SCORE_LEAVE_BALANCE ("Score, drive over platform to get mobility, then reverse and balance platform."),
       NOTHING ("Just sit there");
   
       public String desc;
@@ -147,9 +151,9 @@ public class Robot extends TimedRobot {
   /*Called every 20 ms, no matter the mode.*/
   @Override
   public void robotPeriodic() {
-    //SmartDashboard.putNumber("NAVX Pitch", navXIMU.getPitch());
-    //SmartDashboard.putNumber("NAVX Roll", navXIMU.getRoll());
-    //SmartDashboard.putNumber("NAVX Yaw(Heading)", navXIMU.getYaw());
+    SmartDashboard.putNumber("NAVX Pitch", navXIMU.getPitch());
+    SmartDashboard.putNumber("NAVX Roll", navXIMU.getRoll());
+    SmartDashboard.putNumber("NAVX Yaw(Heading)", navXIMU.getYaw());
   }
 
   /**
@@ -194,9 +198,9 @@ public class Robot extends TimedRobot {
     }
   }
 
-  /*
+  
   private double getCorrectedPitch() {
-    return navXIMU.getPitch() + Constants.Auto.GYRO_ANGLE_ADJUST
+    return navXIMU.getPitch() + Constants.Auto.GYRO_ANGLE_ADJUST;
   }
 
   //TODO: Stop repeating the same PID code everwhere!
@@ -206,32 +210,38 @@ public class Robot extends TimedRobot {
   //Uses a PID loop to get the charge station level.
   //Returns 0 unless it is level, in which case it returns 1.
   
-  private int engageChargeStation() {
+/*  private int engageChargeStation() {
     double err = getCorrectedPitch(); //TODO: May need to be inverted
 
     if (Math.abs(err) < Constants.Auto.LEVELING_ACCURACY) {
+      System.out.println("[auto] Leveled!!");
       return 1;
     }
 
-    double errSlope = (err - lastLevelingErr) / Constants.DT;
+    double errSlope = (err - r) / Constants.DT;
 
     levelingI += err * Constants.DT;
 
     double drivePower = err * Constants.Auto.LEVELING_P + levelingI * Constants.Auto.LEVELING_I + errSlope * Constants.Auto.LEVELING_D;
 
-    tankDriveWithFF(drivePower,drivePower, getVelL(), getVelR()); //TODO: May need to be inverted
+    tankDriveWithFF(-drivePower,-drivePower, getVelL(), getVelR()); //TODO: May need to be inverted
     return 0;
   }
-
-  */
+*/
+  
 
   private void tankDriveWithFF(double targetVelL, double targetVelR, double currentVelL, double currentVelR) {
 
     SmartDashboard.putNumber("Left Drive Target Vel", targetVelL);
     SmartDashboard.putNumber("Right Drive Target Vel", targetVelR);
 
-    double targetAccelerationL = targetVelL - currentVelL; //TODO: This being a wierd PID loop in diguise is confusing
+
+    double targetAccelerationL = targetVelL - currentVelL;
     double targetAccelerationR = targetVelR - currentVelR;
+
+
+    //double targetAccelerationL = currentVelL - targetVelL; //TODO: This being a wierd PID loop in diguise is confusing
+    //double targetAccelerationR = currentVelR - targetVelR;
 
     //Tank Drive, but using fancy feedforwards stuff
     double l = calcDriveFF(targetVelL, limitAbsWithSign(targetAccelerationL, Constants.Drive.MAX_ACC));
@@ -281,6 +291,36 @@ public class Robot extends TimedRobot {
   }
 
   double autoTimer = 0;
+
+  private int ultimateAuto(int autoStepNumber) {
+    switch (autoStepNumber) {
+      case 0: 
+        return scoreThenLeaveCommunity(autoStepNumber);
+      case 1:
+        if (System.currentTimeMillis() - autoTimer > Constants.Auto.LEAVING_OVER_STATION_TIME) {
+          autoTimer = System.currentTimeMillis();
+          System.out.println("[auto] left charge station");
+          return 2;
+        } else {
+          tankDriveWithFF(-Constants.Auto.TRAVERSAL_SPEED,-Constants.Auto.TRAVERSAL_SPEED,getVelL(), getVelR());
+          return 1;
+        }
+      case 2:
+        if (System.currentTimeMillis() - autoTimer > Constants.Auto.LEVELING2_REVERSE_APPROACH_TIME) {
+          autoTimer = System.currentTimeMillis();
+          System.out.println("[auto] back on platform, ready to rock");
+          return 3;
+        } else {
+          tankDriveWithFF(Constants.Auto.TRAVERSAL_SPEED,Constants.Auto.TRAVERSAL_SPEED,getVelL(), getVelR());
+          return 2;
+        }
+      case 3:
+      //  return engageChargeStation() + 3;
+        
+    }
+    return autoStepNumber;
+  }
+
 /* 
   private int levelPlatform(int autoStepNumber) {
     switch(autoStepNumber) {
@@ -307,6 +347,7 @@ public class Robot extends TimedRobot {
         return 2;
     }
   }
+
 */
   private int scoreThenLeaveCommunity(int autoStepNumber) {
     switch(autoStepNumber) {
@@ -362,9 +403,9 @@ public class Robot extends TimedRobot {
     m_autoSelected = autoChooser.getSelected();
     System.out.println("Auto selected: " + m_autoSelected.desc);
 
-    shiftinator.set(false); //Low gear for auto!
-    grabinator.set(true); //Grabinator is inverted
-    liftinator.set(false);
+    //shiftinator.set(false); //Low gear for auto!
+    //grabinator.set(true); //Grabinator is inverted
+    //liftinator.set(false);
 
     autoTimer = System.currentTimeMillis();
     masterAutoProgressTracker = 0;
@@ -380,8 +421,11 @@ public class Robot extends TimedRobot {
       case NOTHING:     break;
       case LEAVE:       masterAutoProgressTracker = leaveCommunity(masterAutoProgressTracker); break;
       case SCORE_LEAVE: masterAutoProgressTracker = scoreThenLeaveCommunity(masterAutoProgressTracker); break;
+      case SCORE_LEAVE_BALANCE: masterAutoProgressTracker = ultimateAuto(masterAutoProgressTracker); break;
 
       default:   throw new Error("Invalid Opmode!");
+
+
     }
   }
 
@@ -399,8 +443,14 @@ public class Robot extends TimedRobot {
        + Constants.Drive.KA * targetAcc;
   }
 
+  boolean dangermode = false;
+  
   @Override
   public void teleopPeriodic() {
+    if (joyOperator.getLeftBumper()) {
+      m_drive.tankDrive(0,0);
+      return;
+    }
 
     //============TELEOP DRIVING!!
     double joyl = joyL.getY();
@@ -415,11 +465,13 @@ public class Robot extends TimedRobot {
     joyr = (joyr * joyr) * Math.signum(joyr);
     Disabled; it was too much */
 
-    if (joyL.getTrigger()) {
+    if (joyOperator.getRightBumperPressed()) dangermode = !dangermode;
+
+    if (joyL.getTrigger() && dangermode) {
       joyl *= Constants.Drive.TELE_FAST_SPEED_MULT;
       joyr *= Constants.Drive.TELE_FAST_SPEED_MULT;
-    } else {
-
+    } 
+    else {
       joyl *= Constants.Drive.TELE_NORM_SPEED_MULT;
       joyr *= Constants.Drive.TELE_NORM_SPEED_MULT;
     }
@@ -435,13 +487,17 @@ public class Robot extends TimedRobot {
     //Solonoids
 
     //==============SHIFTING!!
-    shiftinator.set(!joyR.getRawButton(2));
+    if (dangermode) shiftinator.set(!joyR.getRawButton(2));
+      
+                               
 
     //==============GRABBY CLAW!!!!
-    if (joyOperator.getRawButton(LogitechF130Controller.kButtonX)) grabinator.set(true);
-    if (joyOperator.getRawButton(LogitechF130Controller.kButtonY)) grabinator.set(false);
+    /* 
+    if (joyOperator.getXButton()) grabinator.set(true);
+    if (joyOperator.getYButton()) grabinator.set(false);
     
-    if (joyOperator.getRawButtonPressed(LogitechF130Controller.kButtonA)) liftinator.toggle();
+    if (joyOperator.getAButton()) liftinator.toggle();
+    */
 
 
   }
