@@ -83,16 +83,16 @@ public class Robot extends TimedRobot {
   private final MotorController m_rightmotors = 
   new MotorControllerGroup(
     usedForGrabbingEncoderR,
-    new CANSparkMax(22, MotorType.kBrushless), 
-    new CANSparkMax(23, MotorType.kBrushless));
+    new CANSparkMax(22, MotorType.kBrushless));
+    //new CANSparkMax(23, MotorType.kBrushless));
     
 
   private final CANSparkMax usedForGrabbingEncoderL = new CANSparkMax(24, MotorType.kBrushless);
   private final MotorController m_leftmotors = 
   new MotorControllerGroup(
     usedForGrabbingEncoderL,
-    new CANSparkMax(25, MotorType.kBrushless),
-    new CANSparkMax(26, MotorType.kBrushless));
+    new CANSparkMax(25, MotorType.kBrushless));
+    //new CANSparkMax(26, MotorType.kBrushless));
 
   private final DifferentialDrive m_drive = new DifferentialDrive(m_leftmotors, m_rightmotors);
   private final RelativeEncoder encoderL = usedForGrabbingEncoderL.getEncoder();
@@ -102,7 +102,7 @@ public class Robot extends TimedRobot {
   //private final AHRS navXIMU = new AHRS(Port.kUSB2); //USB2 is BOTTOM USB PORT!!!
   private final AHRS navXIMU = new AHRS(Port.kMXP);
 
-  private final Solenoid shiftinator = new Solenoid(PneumaticsModuleType.CTREPCM, 1);
+  //private final Solenoid shiftinator = new Solenoid(PneumaticsModuleType.CTREPCM, 1);
   //private final Solenoid grabinator  = new Solenoid(PneumaticsModuleType.CTREPCM, 0);
   //private final Solenoid liftinator  = new Solenoid(PneumaticsModuleType.CTREPCM, 2);
 
@@ -138,7 +138,7 @@ public class Robot extends TimedRobot {
 
     SmartDashboard.putData("Auto Choices:", autoChooser);
 
-    shiftinator.set(true);
+    //shiftinator.set(true);
 
     m_leftmotors.setInverted(false); //TODO: Check that I'm actually going the right way
     m_rightmotors.setInverted(true);
@@ -169,7 +169,7 @@ public class Robot extends TimedRobot {
     return Math.min(Math.abs(value), limit) * Math.signum(value);
   }
 
-  private double getPosL() {
+  /*private double getPosL() {
     if (shiftinator.get()) { //Low Gear
       return encoderL.getPosition() * Constants.Drive.LOW_GEAR_REVS_TO_INCHES;
     } else { //High Gear
@@ -196,7 +196,7 @@ public class Robot extends TimedRobot {
     } else { //High Gear
       return encoderR.getVelocity() * Constants.Drive.HIGH_GEAR_REVS_TO_INCHES;
     }
-  }
+  }*/
 
   
   private double getCorrectedPitch() {
@@ -255,9 +255,9 @@ public class Robot extends TimedRobot {
     SmartDashboard.putNumber("Right Drive Output Voltage",r);
   }
 
-  private boolean moveStraightWithEncoders(double distance, double targetSpeed) {
+  /*private boolean moveStraightWithEncoders(double distance, double targetSpeed) {
 
-    double errL = getPosL() - distance;
+    double errL = getPosL() - distance; //getPosL was broken, don't know if it still is
     double errR = getPosR() - distance;
 
     double targetSpeedL = targetSpeed;
@@ -280,19 +280,19 @@ public class Robot extends TimedRobot {
       getVelR()
     );
     return false;
-  }
+  }*/
 
-  private int move2FeetExactly(int step) {
+  /*private int move2FeetExactly(int step) {
     if (moveStraightWithEncoders(24, Constants.Auto.TRAVERSAL_SPEED)) {
       return 1;
     } else {
       return 0;
     }
-  }
+  }*/
 
   double autoTimer = 0;
 
-  private int ultimateAuto(int autoStepNumber) {
+  /*private int ultimateAuto(int autoStepNumber) { //Uses getVelL and getVelR which were broken (maybe fixed?)
     switch (autoStepNumber) {
       case 0: 
         return scoreThenLeaveCommunity(autoStepNumber);
@@ -319,7 +319,7 @@ public class Robot extends TimedRobot {
         
     }
     return autoStepNumber;
-  }
+  }*/
 
 /* 
   private int levelPlatform(int autoStepNumber) {
@@ -349,7 +349,7 @@ public class Robot extends TimedRobot {
   }
 
 */
-  private int scoreThenLeaveCommunity(int autoStepNumber) {
+  /*private int scoreThenLeaveCommunity(int autoStepNumber) {
     switch(autoStepNumber) {
       case 0:
         if (System.currentTimeMillis() - autoTimer > Constants.Auto.SCORING_DRIVE_TIME * 1000) {
@@ -372,8 +372,8 @@ public class Robot extends TimedRobot {
     return autoStepNumber;
   }
 
-  /* 2 steps! */
-  private int leaveCommunity(int autoStepNumber) {
+   2 steps! 
+   private int leaveCommunity(int autoStepNumber) {
     switch(autoStepNumber) {
       case 0:
         if (System.currentTimeMillis() - autoTimer > Constants.Auto.LEAVING_DRIVE_TIME * 1000 ) {
@@ -395,8 +395,10 @@ public class Robot extends TimedRobot {
     }
     return autoStepNumber;
   }
+  */
 
   int masterAutoProgressTracker = 0;
+
 
   @Override
   public void autonomousInit() {
@@ -419,9 +421,9 @@ public class Robot extends TimedRobot {
   public void autonomousPeriodic() {
     switch (m_autoSelected) { //TODO: Redo the auto step control system to use commands instead (Warning: Learning curve)
       case NOTHING:     break;
-      case LEAVE:       masterAutoProgressTracker = leaveCommunity(masterAutoProgressTracker); break;
-      case SCORE_LEAVE: masterAutoProgressTracker = scoreThenLeaveCommunity(masterAutoProgressTracker); break;
-      case SCORE_LEAVE_BALANCE: masterAutoProgressTracker = ultimateAuto(masterAutoProgressTracker); break;
+      //case LEAVE:       masterAutoProgressTracker = leaveCommunity(masterAutoProgressTracker); break;
+      //case SCORE_LEAVE: masterAutoProgressTracker = scoreThenLeaveCommunity(masterAutoProgressTracker); break;
+      //case SCORE_LEAVE_BALANCE: masterAutoProgressTracker = ultimateAuto(masterAutoProgressTracker); break;
 
       default:   throw new Error("Invalid Opmode!");
 
@@ -444,7 +446,8 @@ public class Robot extends TimedRobot {
   }
 
   boolean dangermode = false;
-  
+  boolean wackyMode = false;
+
   @Override
   public void teleopPeriodic() {
     if (joyOperator.getLeftBumper()) {
@@ -476,18 +479,32 @@ public class Robot extends TimedRobot {
       joyr *= Constants.Drive.TELE_NORM_SPEED_MULT;
     }
 
-    
-    tankDriveWithFF(
-      joyl, 
-      joyr, 
-      getVelL(),
-      getVelR()
-    );
+    if (!wackyMode) {
+      m_rightmotors.setVoltage(joyR.getY()*5);
+      m_leftmotors.setVoltage (joyL.getY()*5);
+      
+      // tankDriveWithFF(
+     //   joyl, 
+     //  joyr, 
+     //   getVelL(),
+    //  getVelR()
+    //  );
+    } else {
+      double turn = joyR.getZ();
+      tankDriveWithFF(
+        joyr + turn,
+        joyr - turn,
+        0, //TODO: maximum possible jank
+        0
+        //getVelL(),
+        //getVelR()
+      );
+    }
     
     //Solonoids
 
     //==============SHIFTING!!
-    if (dangermode) shiftinator.set(!joyR.getRawButton(2));
+    //if (dangermode) shiftinator.set(!joyR.getRawButton(2));
       
                                
 
@@ -521,8 +538,8 @@ public class Robot extends TimedRobot {
   @Override
   public void testPeriodic() {
     //teleopPeriodic();
-    System.out.println(testStep);
-    testStep = move2FeetExactly(testStep);
+    System.out.println("Test mode disabled!");
+    //testStep = move2FeetExactly(testStep);
   }
 
   /** This function is called once when the robot is first started up. */
